@@ -1,0 +1,2648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Box Set Prototype</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f5f5;
+    --surface: #ffffff;
+    --surface2: #f0f0f0;
+    --surface3: #e8e8e8;
+    --border: #e0e0e0;
+    --text: #1a1a1a;
+    --text2: #666;
+    --text3: #999;
+    --accent: #2196f3;
+    --accent2: #1976d2;
+    --sidebar-bg: #1e2128;
+    --sidebar-text: #c8cdd6;
+    --sidebar-text2: #6b7280;
+    --sidebar-active: #ffffff;
+    --sidebar-active-bg: rgba(255,255,255,0.08);
+    --queue-bg: #f9f9f9;
+    --queue-width: 260px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 15px;
+  }
+
+  #app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 180px;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding: 16px 0;
+  }
+
+  .sidebar-logo {
+    padding: 4px 20px 20px;
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+
+  .sidebar-section {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--sidebar-text2);
+    padding: 12px 20px 6px;
+    font-weight: 600;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 20px;
+    font-size: 13px;
+    color: var(--sidebar-text);
+    cursor: pointer;
+    border-radius: 0;
+    transition: background 0.1s, color 0.1s;
+  }
+
+  .sidebar-item:hover:not(.disabled) { background: var(--sidebar-active-bg); color: #fff; }
+  .sidebar-item.active { color: var(--sidebar-active); font-weight: 500; border-left: 2px solid var(--accent); padding-left: 18px; }
+  .sidebar-item.disabled { opacity: 0.35; cursor: default; }
+
+  .sidebar-icon { font-size: 13px; width: 16px; text-align: center; opacity: 0.7; }
+
+  /* ── MAIN CONTENT ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--text2);
+    flex: 1;
+  }
+
+  .breadcrumb span { cursor: pointer; }
+  .breadcrumb span:hover { color: var(--text); }
+  .breadcrumb .sep { color: var(--text3); cursor: default; }
+  .breadcrumb .current { color: var(--text); font-weight: 500; cursor: default; }
+
+  /* ── CONTENT AREA ── */
+  #content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px 48px;
+  }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── SECTION HEADERS ── */
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .section-sub {
+    font-size: 13px;
+    color: var(--text3);
+  }
+
+  /* ── BOX SET CARDS (library) ── */
+  .boxset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  .boxset-card {
+    cursor: pointer;
+    background: transparent;
+  }
+
+  .boxset-card:hover .boxset-card-art img { opacity: 0.85; }
+
+  .boxset-card-art {
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: var(--surface3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    margin-bottom: 8px;
+  }
+
+  .boxset-card-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.15s;
+  }
+
+  .boxset-card-body { padding: 0; }
+
+  .boxset-art { display: none; }
+  .boxset-info { min-width: 0; }
+
+  .boxset-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 2px;
+    color: var(--text);
+  }
+
+  .boxset-artist {
+    font-size: 13px;
+    color: var(--text2);
+    margin-bottom: 3px;
+  }
+
+  .boxset-meta {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .meta-pill {
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .meta-pill + .meta-pill::before {
+    content: '·';
+    margin-right: 6px;
+  }
+
+  /* ── DUAL IDENTITY SECTION ── */
+  .dual-identity-section {
+    margin-top: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+  }
+
+  .dual-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .dual-desc {
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+
+  .dual-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .dual-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .dual-card:hover { border-color: var(--accent); background: #f0f7ff; }
+
+  .dual-card-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    margin-bottom: 5px;
+  }
+
+  .dual-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .dual-card-sub {
+    font-size: 13px;
+    color: var(--text2);
+    margin-bottom: 7px;
+  }
+
+  .dual-card-context {
+    font-size: 13px;
+    color: var(--accent2);
+  }
+
+  /* ── ABOUT BOX ── */
+  .about-box {
+    margin-top: 32px;
+    margin-bottom: 40px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px 24px;
+  }
+
+  .about-box h3 {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .about-box p {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.65;
+    margin: 0 0 10px;
+  }
+
+  .about-box p:last-child { margin-bottom: 0; }
+
+  .about-box code {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    background: var(--surface3);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--text);
+  }
+
+  .tag-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  .tag-table th {
+    text-align: left;
+    padding: 6px 10px;
+    background: var(--surface3);
+    color: var(--text2);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    width: 20%;
+  }
+
+  .tag-table th:first-child {
+    width: 110px;
+  }
+
+  .tag-table td {
+    padding: 5px 10px;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    width: 20%;
+  }
+
+  .tag-table td:first-child {
+    white-space: nowrap;
+    width: 110px;
+  }
+
+  .tag-table tr:last-child td { border-bottom: none; }
+  .tag-table tr:hover td { background: var(--surface3); }
+
+  /* ── WORK GRID (box set view) ── */
+  .work-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
+  }
+
+  .work-card {
+    cursor: pointer;
+    background: transparent;
+  }
+
+  .work-card:hover .work-card-art img { opacity: 0.85; }
+
+  .work-card-art {
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: var(--surface3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    color: var(--text3);
+    position: relative;
+  }
+
+  .work-card-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.15s;
+  }
+
+  .work-card-art .art-placeholder {
+    width: 100%;
+    height: 100%;
+    background: var(--surface3);
+  }
+
+  .work-card-art .play-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.35);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .work-card:hover .play-overlay { opacity: 1; }
+
+  .play-overlay-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.92);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #111;
+    padding-left: 3px;
+  }
+
+  .play-overlay-btn:hover { background: #fff; }
+
+  .work-card-body { padding: 0; }
+
+  .work-disc-range {
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 2px;
+  }
+
+  .work-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 2px;
+    line-height: 1.3;
+    color: var(--text);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .work-orig-year {
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .work-meta {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 1px;
+  }
+
+  .work-disc-badge {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--accent2);
+    background: #e3f2fd;
+    border-radius: 3px;
+    padding: 1px 5px;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* ── DISC DIVIDER in track list ── */
+  .disc-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px 6px;
+    background: var(--surface2);
+  }
+
+  .disc-divider::before,
+  .disc-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .disc-divider-label {
+    font-size: 11px;
+    color: var(--text3);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── BOX SET HEADER ── */
+  .boxset-view-header {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .boxset-view-art {
+    width: 160px;
+    height: 160px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: var(--surface3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+
+  .boxset-view-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .boxset-view-info {
+    min-width: 0;
+  }
+
+  .boxset-view-info h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 3px;
+    color: var(--text);
+  }
+
+  .boxset-view-info .artist {
+    font-size: 15px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+
+  .boxset-view-info .meta {
+    font-size: 13px;
+    color: var(--text3);
+    display: flex;
+    gap: 10px;
+  }
+
+  .boxset-view-info .meta span + span::before {
+    content: '·';
+    margin-right: 10px;
+  }
+
+  /* ── TRACK LIST ── */
+  .disc-view-header {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  .disc-view-art {
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: var(--surface3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+
+  .disc-view-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .disc-view-info h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 3px;
+    color: var(--text);
+  }
+
+  .disc-view-info .context {
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 12px;
+  }
+
+  .disc-view-info .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+    letter-spacing: 0.2px;
+  }
+
+  .btn:hover { opacity: 0.85; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .track-list {
+    border: 1px solid var(--border);
+    border-radius: 0;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .track-row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto 80px;
+    align-items: center;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    gap: 10px;
+  }
+
+  .track-row:last-child { border-bottom: none; }
+  .track-row:hover { background: var(--surface2); }
+  .track-row:hover .track-play-btn { opacity: 1; }
+
+  .track-num {
+    font-size: 13px;
+    color: var(--text3);
+    text-align: right;
+  }
+
+  .track-info { min-width: 0; }
+
+  .track-title {
+    font-size: 15px;
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+  }
+
+  .track-credit {
+    font-size: 13px;
+    color: var(--text3);
+    margin-top: 1px;
+  }
+
+  .track-dur {
+    font-size: 13px;
+    color: var(--text3);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .track-play-btn {
+    opacity: 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    border-radius: 3px;
+    font-size: 12px;
+    padding: 2px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.1s, background 0.1s, color 0.1s;
+  }
+
+  .track-play-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  /* ── QUEUE SIDEBAR ── */
+  #queue {
+    width: var(--queue-width);
+    background: var(--queue-bg);
+    border-left: 1px solid var(--border);
+    display: none;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  .queue-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .queue-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .queue-clear {
+    font-size: 12px;
+    color: var(--text3);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  .queue-clear:hover { color: var(--text2); background: var(--surface3); }
+
+  .queue-empty {
+    padding: 24px 16px;
+    font-size: 13px;
+    color: var(--text3);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  #queue-list {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .queue-item {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+
+  .queue-item:hover { background: var(--surface3); }
+
+  .queue-item.playing {
+    background: #e3f2fd;
+    border-left: 2px solid var(--accent);
+    padding-left: 12px;
+  }
+
+  .queue-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+  }
+
+  .queue-item-context {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .queue-item-dur {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 1px;
+  }
+
+  /* ── TRANSPORT BAR ── */
+  #transport {
+    height: 90px;
+    background: #1a1c22;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: none;
+    align-items: center;
+    padding: 0 24px;
+    gap: 0;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  #transport.active { display: flex; }
+
+  .transport-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 280px;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  .transport-art {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+  }
+
+  .transport-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .transport-track-info {
+    min-width: 0;
+  }
+
+  .transport-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .transport-artist {
+    font-size: 14px;
+    color: rgba(255,255,255,0.65);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .transport-context {
+    font-size: 13px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .transport-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .transport-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .transport-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    transition: color 0.1s;
+  }
+
+  .transport-btn:hover { color: #fff; }
+
+  .transport-btn.play {
+    width: 32px;
+    height: 32px;
+    background: #fff;
+    color: #1a1c22;
+    border-radius: 50%;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .transport-btn.play:hover { background: rgba(255,255,255,0.85); color: #1a1c22; }
+
+  .transport-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 340px;
+  }
+
+  .transport-time {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    font-variant-numeric: tabular-nums;
+    width: 32px;
+    flex-shrink: 0;
+  }
+
+  .transport-time.right { text-align: right; }
+
+  .progress-track {
+    flex: 1;
+    height: 3px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 2px;
+    position: relative;
+  }
+
+  .progress-fill {
+    width: 30%;
+    height: 100%;
+    background: #fff;
+    border-radius: 2px;
+  }
+
+  .transport-right {
+    width: 180px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+  }
+
+  .transport-vol {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .vol-icon {
+    font-size: 17px;
+    color: rgba(255,255,255,0.5);
+  }
+
+  .vol-track {
+    width: 70px;
+    height: 3px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 2px;
+  }
+
+  .vol-fill {
+    width: 70%;
+    height: 100%;
+    background: rgba(255,255,255,0.6);
+    border-radius: 2px;
+  }
+
+  .transport-icon-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.45);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.1s;
+  }
+
+  .transport-icon-btn:hover { color: #fff; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #444; }
+</style>
+</head>
+<body>
+
+<div id="app-body">
+<div id="sidebar">
+  <div class="sidebar-logo">◈</div>
+  <div class="sidebar-section">Library</div>
+  <div class="sidebar-item active" onclick="showLibrary()">
+    <span class="sidebar-icon">◧</span> Box Sets
+  </div>
+  <div class="sidebar-item disabled">
+    <span class="sidebar-icon">♪</span> Albums
+  </div>
+  <div class="sidebar-item disabled">
+    <span class="sidebar-icon">♫</span> Tracks
+  </div>
+  <div class="sidebar-section">Browse</div>
+  <div class="sidebar-item disabled">
+    <span class="sidebar-icon">⌖</span> Artists
+  </div>
+  <div class="sidebar-item disabled">
+    <span class="sidebar-icon">◉</span> Genres
+  </div>
+</div>
+
+<div id="main">
+  <header>
+    <div class="breadcrumb" id="breadcrumb"></div>
+  </header>
+  <div id="content">
+
+    <!-- ── LIBRARY VIEW ── -->
+    <div class="view active" id="view-library">
+      <div class="section-header">
+        <div class="section-title">Box Sets</div>
+        <div class="section-sub">5 collections</div>
+      </div>
+      <div class="boxset-grid">
+        <div class="boxset-card beatles" onclick="showBoxSet('beatles')">
+          <div class="boxset-card-art">
+            <img src="https://coverartarchive.org/release/5cd103c6-07e3-32b1-8cea-7e53eb994829/15575666512-500.jpg" alt="The Beatles in Mono" onerror="this.style.display='none'">
+          </div>
+          <div class="boxset-card-body">
+            <div class="boxset-info">
+              <div class="boxset-title">The Beatles in Mono</div>
+              <div class="boxset-artist">The Beatles</div>
+              <div class="boxset-meta">
+                <span class="meta-pill">13 CDs</span>
+                <span class="meta-pill">2009</span>
+                <span class="meta-pill">Apple Records</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="boxset-card md" onclick="showBoxSet('md')">
+          <div class="boxset-card-art">
+            <img src="https://coverartarchive.org/release/98db4007-565e-45f9-a7ad-496dc8c669d1/44789522217-500.jpg" alt="The Complete Live at the Plugged Nickel 1965" onerror="this.style.display='none'">
+          </div>
+          <div class="boxset-card-body">
+            <div class="boxset-info">
+              <div class="boxset-title">The Complete Live at the Plugged Nickel 1965</div>
+              <div class="boxset-artist">Miles Davis</div>
+              <div class="boxset-meta">
+                <span class="meta-pill">8 CDs</span>
+                <span class="meta-pill">2026</span>
+                <span class="meta-pill">Sony Music</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="boxset-card grateful-dead" onclick="showBoxSet('gd')">
+          <div class="boxset-card-art">
+            <img src="https://live.staticflickr.com/3857/33706685026_e5965a7218_z.jpg" alt="May 1977: Get Shown the Light">
+          </div>
+          <div class="boxset-card-body">
+            <div class="boxset-info">
+              <div class="boxset-title">May 1977: Get Shown the Light</div>
+              <div class="boxset-artist">Grateful Dead</div>
+              <div class="boxset-meta">
+                <span class="meta-pill">11 CDs</span>
+                <span class="meta-pill">2017</span>
+                <span class="meta-pill">Grateful Dead Records</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="boxset-card tim" onclick="showBoxSet('tim')">
+          <div class="boxset-card-art">
+            <img src="https://coverartarchive.org/release/4cd0e69f-c59e-4fc3-90f9-13b75481943c/36842745326-500.jpg" alt="Tim (Let It Bleed Edition)" onerror="this.style.display='none'">
+          </div>
+          <div class="boxset-card-body">
+            <div class="boxset-info">
+              <div class="boxset-title">Tim (Let It Bleed Edition)</div>
+              <div class="boxset-artist">The Replacements</div>
+              <div class="boxset-meta">
+                <span class="meta-pill">4 CDs</span>
+                <span class="meta-pill">2023</span>
+                <span class="meta-pill">Sire Records</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="boxset-card hyperion" onclick="showBoxSet('hyperion')">
+          <div class="boxset-card-art">
+            <img src="https://soundslikevinyl.com/cdn/shop/files/0034571147017_1024x1024.jpg?v=1772406299" alt="The Hyperion Romantic Piano Concerto Edition" onerror="this.style.display='none'">
+          </div>
+          <div class="boxset-card-body">
+            <div class="boxset-info">
+              <div class="boxset-title">The Hyperion Romantic Piano Concerto Edition</div>
+              <div class="boxset-artist">Various Artists</div>
+              <div class="boxset-meta">
+                <span class="meta-pill">50 CDs</span>
+                <span class="meta-pill">2026</span>
+                <span class="meta-pill">Hyperion</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-box">
+        <h3>About this prototype</h3>
+        <p>This demo explores how Roon could support box sets as a top level browsing experience. Roon today handles multi-disc albums but has no concept of a collection of albums that makes box sets meaningful.</p>
+        <p>The five box sets here represent three structural models. <em>May 1977</em> and <em>Plugged Nickel</em> are live archives grouped by set and night. <em>The Beatles in Mono</em> is a curated collection of discrete albums. <em>Tim: Let It Bleed Edition</em> is a single album presented as four distinct versions. <em>The Hyperion Romantic Piano Concertos</em> tries to extend the scheme into the classical genre. In each case the proposed hierarchy is the same: Box Set → Work → Disc → Track — using the existing <code>GROUPING</code> file tag as the structural signal Roon acts to create a box set.</p>
+        <p>The tag structure is outlined below, with the values the first track of each box set:</p>
+        <table class="tag-table">
+          <thead><tr><th>Tag</th><th>GD May 1977</th><th>Beatles in Mono</th><th>Plugged Nickel</th><th>Tim LIB Ed.</th><th>Hyperion</th></tr></thead>
+          <tbody>
+            <tr><td><code>GROUPING</code></td><td>May 1977: Get Shown the Light</td><td>The Beatles in Mono</td><td>The Complete Live at the Plugged Nickel 1965</td><td>Tim (Let It Bleed Edition)</td><td>The Hyperion Romantic Piano Concerto Edition</td></tr>
+            <tr><td><code>ALBUM</code></td><td>May 5, 1977: Veterans Memorial Coliseum, New Haven, CT</td><td>Please Please Me</td><td>December 22, 1965 — 1st Set</td><td>Tim (Ed Stasium mix)</td><td>Paderewski: Piano Concerto in A minor, op. 17 / Moszkowski: Piano Concerto in E major, op. 59</td></tr>
+            <tr><td><code>DISCNUMBER</code></td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+            <tr><td><code>TRACKNUMBER</code></td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+            <tr><td><code>TITLE</code></td><td>Promised Land</td><td>I Saw Her Standing There</td><td>If I Were a Bell</td><td>Hold My Life</td><td>Piano Concerto in E major, op. 59: I. Moderato</td></tr>
+            <tr><td><code>ARTIST</code></td><td>Grateful Dead</td><td>The Beatles</td><td>Miles Davis</td><td>The Replacements</td><td>Moszkowski</td></tr>
+            <tr><td><code>COMPOSER</code></td><td>—</td><td>—</td><td>—</td><td>—</td><td>Moritz Moszkowski</td></tr>
+            <tr><td><code>PERFORMER</code></td><td>—</td><td>—</td><td>—</td><td>—</td><td>Piers Lane</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Dual Identity</div>
+        <div class="section-sub">The same album, two ways</div>
+      </div>
+      <div class="dual-identity-section">
+        <div class="dual-label">Design Problem: Edition vs. Duplicate</div>
+        <div class="dual-desc">
+          <em>Revolver</em> exists both as a standalone album and as Disc 7 of <em>The Beatles in Mono</em>. A well-designed music app treats these as <strong>two editions of the same work</strong> — not duplicates. Both entries lead to the same track data, but carry different context in their breadcrumbs and queue metadata. Click either card to see how the track view differs. Roon's <code>VERSION</code> should enable this.
+        </div>
+        <div class="dual-cards">
+          <div class="dual-card" onclick="showDisc('beatles', 6, 'standalone')">
+            <div class="dual-card-label">Standalone Album</div>
+            <div class="dual-card-title">Revolver</div>
+            <div class="dual-card-sub">The Beatles · 1966</div>
+            <div class="dual-card-context">Albums → Revolver</div>
+          </div>
+          <div class="dual-card" onclick="showDisc('beatles', 6, 'boxset')">
+            <div class="dual-card-label">Inside a Box Set</div>
+            <div class="dual-card-title">Revolver</div>
+            <div class="dual-card-sub">The Beatles · 1966 mono mix</div>
+            <div class="dual-card-context">The Beatles in Mono → Disc 7</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BOX SET VIEW ── -->
+    <div class="view" id="view-boxset"></div>
+
+    <!-- ── DISC VIEW ── -->
+    <div class="view" id="view-disc"></div>
+
+  </div>
+</div>
+
+<!-- ── QUEUE SIDEBAR ── -->
+<div id="queue">
+  <div class="queue-header">
+    <div class="queue-title">Play Queue</div>
+    <div class="queue-clear" onclick="clearQueue()">Clear</div>
+  </div>
+  <div id="queue-list">
+    <div class="queue-empty">Queue is empty.<br><br>Hit "Play" or "Play from here" on any track to start.</div>
+  </div>
+</div>
+
+</div><!-- /#app-body -->
+
+<!-- ── TRANSPORT BAR ── -->
+<div id="transport">
+  <div class="transport-left">
+    <div class="transport-art" id="transport-art" style="display:none"></div>
+    <div class="transport-track-info">
+      <div class="transport-title" id="transport-title"></div>
+      <div class="transport-artist" id="transport-artist"></div>
+      <div class="transport-context" id="transport-context"></div>
+    </div>
+  </div>
+  <div class="transport-center">
+    <div class="transport-controls">
+      <button class="transport-btn">⏮</button>
+      <button class="transport-btn play">▶</button>
+      <button class="transport-btn">⏭</button>
+    </div>
+    <div class="transport-progress">
+      <span class="transport-time">0:00</span>
+      <div class="progress-track"><div class="progress-fill"></div></div>
+      <span class="transport-time right">—:——</span>
+    </div>
+  </div>
+  <div class="transport-right">
+    <div class="transport-vol">
+      <span class="vol-icon">🔈</span>
+      <div class="vol-track"><div class="vol-fill"></div></div>
+    </div>
+    <button class="transport-icon-btn" title="Queue">☰</button>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+
+function fmt(ms) {
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}
+
+const BEATLES = {
+  id: 'beatles',
+  title: 'The Beatles in Mono',
+  artist: 'The Beatles',
+  label: 'Apple Records',
+  year: 2009,
+  emoji: '🎸',
+  colorClass: 'beatles',
+  works: [],
+};
+
+const GD = {
+  id: 'gd',
+  title: 'May 1977: Get Shown the Light',
+  artist: 'Grateful Dead',
+  label: 'Grateful Dead Records',
+  year: 2017,
+  emoji: '💀',
+  colorClass: 'grateful-dead',
+  works: [
+    {
+      title: 'May 5, 1977 — Veterans Memorial Coliseum, New Haven, CT',
+      origYear: 1977,
+      discNums: [1, 2],
+      art: 'https://live.staticflickr.com/4182/34388034651_9e3310c38d_b.jpg',
+      discs: [
+        { discNum: 1, tracks: [
+          {n:1, t:'Promised Land', ms:345000},
+          {n:2, t:'Sugaree', ms:937000},
+          {n:3, t:'Mama Tried >', ms:159000},
+          {n:4, t:'El Paso', ms:308000},
+          {n:5, t:'Tennessee Jed', ms:564000},
+          {n:6, t:'Looks Like Rain', ms:559000},
+          {n:7, t:'Deal', ms:375000},
+          {n:8, t:'Lazy Lightning >', ms:215000},
+          {n:9, t:'Supplication', ms:332000},
+          {n:10, t:'Peggy‐O', ms:490000},
+          {n:11, t:'The Music Never Stopped', ms:413000},
+        ]},
+        { discNum: 2, tracks: [
+          {n:1, t:'Bertha', ms:472000},
+          {n:2, t:'Estimated Prophet', ms:550000},
+          {n:3, t:'Scarlet Begonias >', ms:651000},
+          {n:4, t:'Fire on the Mountain >', ms:725000},
+          {n:5, t:'Good Lovin\'', ms:409000},
+          {n:6, t:'St. Stephen >', ms:708000},
+          {n:7, t:'Sugar Magnolia', ms:539000},
+          {n:8, t:'Johnny B. Goode', ms:275000},
+        ]},
+      ],
+    },
+    {
+      title: 'May 7, 1977 — Boston Garden, Boston, MA',
+      origYear: 1977,
+      discNums: [3, 4, 5],
+      art: 'https://live.staticflickr.com/4181/34357371292_2e6827c970_b.jpg',
+      discs: [
+        { discNum: 3, tracks: [
+          {n:1, t:'Bertha', ms:487000},
+          {n:2, t:'Cassidy', ms:308000},
+          {n:3, t:'Deal', ms:368000},
+          {n:4, t:'Jack Straw', ms:329000},
+          {n:5, t:'Peggy‐O', ms:500000},
+          {n:6, t:'New Minglewood Blues', ms:415000},
+          {n:7, t:'Mississippi Half‐Step Uptown Toodeloo >', ms:750000},
+          {n:8, t:'Big River', ms:445000},
+          {n:9, t:'Tennessee Jed', ms:491000},
+          {n:10, t:'The Music Never Stopped', ms:467000},
+        ]},
+        { discNum: 4, tracks: [
+          {n:1, t:'Terrapin Station', ms:664000},
+          {n:2, t:'Samson and Delilah', ms:460000},
+          {n:3, t:'Friend of the Devil', ms:498000},
+          {n:4, t:'Estimated Prophet', ms:504000},
+        ]},
+        { discNum: 5, tracks: [
+          {n:1, t:'Eyes of the World >', ms:681000},
+          {n:2, t:'Drums >', ms:194000},
+          {n:3, t:'The Wheel >', ms:635000},
+          {n:4, t:'Wharf Rat >', ms:861000},
+          {n:5, t:'Around and Around', ms:527000},
+          {n:6, t:'U.S. Blues', ms:340000},
+        ]},
+      ],
+    },
+    {
+      title: 'May 8, 1977 — Barton Hall, Cornell University, Ithaca, NY',
+      origYear: 1977,
+      discNums: [6, 7, 8],
+      art: 'https://live.staticflickr.com/4185/33707819903_6f59c09356_b.jpg',
+      discs: [
+        { discNum: 6, tracks: [
+          {n:1, t:'New Minglewood Blues', ms:334000},
+          {n:2, t:'Loser', ms:478000},
+          {n:3, t:'El Paso', ms:288000},
+          {n:4, t:'They Love Each Other', ms:449000},
+          {n:5, t:'Jack Straw', ms:389000},
+          {n:6, t:'Deal', ms:370000},
+          {n:7, t:'Lazy Lightning >', ms:206000},
+          {n:8, t:'Supplication', ms:288000},
+          {n:9, t:'Brown‐Eyed Women', ms:349000},
+          {n:10, t:'Mama Tried', ms:192000},
+          {n:11, t:'Row Jimmy', ms:674000},
+        ]},
+        { discNum: 7, tracks: [
+          {n:1, t:'Dancing in the Street', ms:992000},
+          {n:2, t:'Scarlet Begonias >', ms:675000},
+          {n:3, t:'Fire on the Mountain', ms:941000},
+          {n:4, t:'Estimated Prophet', ms:528000},
+        ]},
+        { discNum: 8, tracks: [
+          {n:1, t:'St. Stephen >', ms:303000},
+          {n:2, t:'Not Fade Away >', ms:982000},
+          {n:3, t:'St. Stephen >', ms:114000},
+          {n:4, t:'Morning Dew', ms:858000},
+          {n:5, t:'One More Saturday Night', ms:310000},
+        ]},
+      ],
+    },
+    {
+      title: 'May 9, 1977 — Buffalo Memorial Auditorium, Buffalo, NY',
+      origYear: 1977,
+      discNums: [9, 10, 11],
+      art: 'https://live.staticflickr.com/4186/33707818363_671573a839_b.jpg',
+      discs: [
+        { discNum: 9, tracks: [
+          {n:1, t:'Help on the Way >', ms:360000},
+          {n:2, t:'Slipknot >', ms:424000},
+          {n:3, t:'Franklin\'s Tower', ms:837000},
+          {n:4, t:'Cassidy', ms:301000},
+          {n:5, t:'Brown‐Eyed Women', ms:352000},
+          {n:6, t:'Mexicali Blues', ms:244000},
+          {n:7, t:'Tennessee Jed', ms:528000},
+          {n:8, t:'Big River', ms:446000},
+          {n:9, t:'Peggy‐O', ms:474000},
+          {n:10, t:'Sunrise', ms:245000},
+          {n:11, t:'The Music Never Stopped', ms:469000},
+        ]},
+        { discNum: 10, tracks: [
+          {n:1, t:'Bertha >', ms:445000},
+          {n:2, t:'Good Lovin\'', ms:382000},
+          {n:3, t:'Ship of Fools', ms:469000},
+        ]},
+        { discNum: 11, tracks: [
+          {n:1, t:'Estimated Prophet >', ms:613000},
+          {n:2, t:'The Other One >', ms:377000},
+          {n:3, t:'Drums >', ms:212000},
+          {n:4, t:'Not Fade Away >', ms:613000},
+          {n:5, t:'Comes a Time >', ms:693000},
+          {n:6, t:'Sugar Magnolia', ms:619000},
+          {n:7, t:'Uncle John\'s Band', ms:570000},
+        ]},
+      ],
+    },
+  ],
+};
+
+// ── COVER ART ─────────────────────────────────────────────────────────────────
+// All URLs from coverartarchive.org for release 5cd103c6-07e3-32b1-8cea-7e53eb994829
+// and c24c74da-5ace-406c-a76e-37963323a42b. Comments on the CAA images identify each disc.
+
+const CAA_BEATLES = 'https://coverartarchive.org/release/5cd103c6-07e3-32b1-8cea-7e53eb994829';
+
+const ART = {
+  // Box set fronts
+  beatlesBox: `${CAA_BEATLES}/15575666512-500.jpg`,
+
+  // Individual Beatles album fronts (from CAA comments: "CD01", "CD02", etc.)
+  pleasepleaseMe:      `${CAA_BEATLES}/15575670137-500.jpg`,  // CD01
+  withTheBeatles:      `${CAA_BEATLES}/17822624606-500.jpg`,  // CD02
+  hardDaysNight:       `${CAA_BEATLES}/19204900023-500.jpg`,  // CD03
+  beatlesForSale:      `${CAA_BEATLES}/5861074557-500.jpg`,   // CD04
+  help:                `${CAA_BEATLES}/5861075611-500.jpg`,   // CD05
+  rubberSoul:          `${CAA_BEATLES}/32192187494-500.jpg`,  // CD06
+  // CDs 07–13: unlabeled in CAA; use box set front as fallback
+  revolver:            `${CAA_BEATLES}/5861077418-500.jpg`,   // CD07 (unlabeled)
+  sgtPeppers:          `${CAA_BEATLES}/5861078448-500.jpg`,   // CD08 (unlabeled)
+  magicalMysteryTour:  `${CAA_BEATLES}/5861079520-500.jpg`,   // CD09 (unlabeled)
+  whiteAlbum:          'https://coverartarchive.org/release/034e0c73-c2df-328b-861c-3db28217aeed/4924862361-500.jpg',
+  monoMasters:         `${CAA_BEATLES}/5502905805-500.jpg`,   // CD12-13 (unlabeled)
+};
+
+BEATLES.works = [
+  { title: 'Please Please Me',                    origYear: 1963, discNums: [1],      art: ART.pleasepleaseMe,    discs: [{ discNum: 1, tracks: [
+    {n:1, t:'I Saw Her Standing There', ms:178013}, {n:2, t:'Misery', ms:112720},
+    {n:3, t:'Anna (Go to Him)', ms:180453},         {n:4, t:'Chains', ms:148733},
+    {n:5, t:'Boys', ms:149400},                     {n:6, t:'Ask Me Why', ms:149746},
+    {n:7, t:'Please Please Me', ms:125720},          {n:8, t:'Love Me Do', ms:144493, credit:'drums: Andy White'},
+    {n:9, t:'P.S. I Love You', ms:127826},          {n:10, t:'Baby It\'s You', ms:162386},
+    {n:11, t:'Do You Want to Know a Secret', ms:121226}, {n:12, t:'A Taste of Honey', ms:126360},
+    {n:13, t:'There\'s a Place', ms:114040},        {n:14, t:'Twist and Shout', ms:156053},
+  ]}]},
+  { title: 'With The Beatles',                    origYear: 1963, discNums: [2],      art: ART.withTheBeatles,    discs: [{ discNum: 2, tracks: [
+    {n:1, t:'It Won\'t Be Long', ms:135906},        {n:2, t:'All I\'ve Got to Do', ms:126053},
+    {n:3, t:'All My Loving', ms:132546},            {n:4, t:'Don\'t Bother Me', ms:151346},
+    {n:5, t:'Little Child', ms:109613},             {n:6, t:'Till There Was You', ms:138960},
+    {n:7, t:'Please Mister Postman', ms:158746},    {n:8, t:'Roll Over Beethoven', ms:169120},
+    {n:9, t:'Hold Me Tight', ms:154560},            {n:10, t:'You Really Got a Hold on Me', ms:184400},
+    {n:11, t:'I Wanna Be Your Man', ms:120533},     {n:12, t:'Devil in Her Heart', ms:149946},
+    {n:13, t:'Not a Second Time', ms:132360},       {n:14, t:'Money (That\'s What I Want)', ms:168973},
+  ]}]},
+  { title: 'A Hard Day\'s Night',                 origYear: 1964, discNums: [3],      art: ART.hardDaysNight,     discs: [{ discNum: 3, tracks: [
+    {n:1, t:'A Hard Day\'s Night', ms:152533},      {n:2, t:'I Should Have Known Better', ms:164106},
+    {n:3, t:'If I Fell', ms:142026},                {n:4, t:'I\'m Happy Just to Dance With You', ms:118706},
+    {n:5, t:'And I Love Her', ms:151066},           {n:6, t:'Tell Me Why', ms:130066},
+    {n:7, t:'Can\'t Buy Me Love', ms:134933},       {n:8, t:'Any Time at All', ms:133400},
+    {n:9, t:'I\'ll Cry Instead', ms:107733},        {n:10, t:'Things We Said Today', ms:158826},
+    {n:11, t:'When I Get Home', ms:138373},         {n:12, t:'You Can\'t Do That', ms:157626},
+    {n:13, t:'I\'ll Be Back', ms:140573},
+  ]}]},
+  { title: 'Beatles for Sale',                    origYear: 1964, discNums: [4],      art: ART.beatlesForSale,    discs: [{ discNum: 4, tracks: [
+    {n:1, t:'No Reply', ms:137893},                 {n:2, t:'I\'m a Loser', ms:153506},
+    {n:3, t:'Baby\'s in Black', ms:127560},         {n:4, t:'Rock and Roll Music', ms:153733},
+    {n:5, t:'I\'ll Follow the Sun', ms:111040},     {n:6, t:'Mr. Moonlight', ms:157200},
+    {n:7, t:'Kansas City', ms:153466},              {n:8, t:'Eight Days a Week', ms:165426},
+    {n:9, t:'Words of Love', ms:134733},            {n:10, t:'Honey Don\'t', ms:179600},
+    {n:11, t:'Every Little Thing', ms:124533},      {n:12, t:'I Don\'t Want to Spoil the Party', ms:156133},
+    {n:13, t:'What You\'re Doing', ms:154733},      {n:14, t:'Everybody\'s Trying to Be My Baby', ms:144000},
+  ]}]},
+  { title: 'Help!',                               origYear: 1965, discNums: [5],      art: ART.help,              discs: [{ discNum: 5, tracks: [
+    {n:1, t:'Help!', ms:143386},                    {n:2, t:'The Night Before', ms:156733},
+    {n:3, t:'You\'ve Got to Hide Your Love Away', ms:131853}, {n:4, t:'I Need You', ms:152773},
+    {n:5, t:'Another Girl', ms:128506},             {n:6, t:'You\'re Going to Lose That Girl', ms:142333},
+    {n:7, t:'Ticket to Ride', ms:188253},           {n:8, t:'Act Naturally', ms:153626},
+    {n:9, t:'It\'s Only Love', ms:119933},          {n:10, t:'You Like Me Too Much', ms:159546},
+    {n:11, t:'Tell Me What You See', ms:160320},    {n:12, t:'I\'ve Just Seen a Face', ms:128866},
+    {n:13, t:'Yesterday', ms:129440},              {n:14, t:'Dizzy Miss Lizzy', ms:182533},
+    {n:15, t:'Help! (1965 stereo mix)', ms:143306}, {n:16, t:'The Night Before (1965 stereo mix)', ms:157600},
+    {n:17, t:'You\'ve Got to Hide Your Love Away (1965 stereo mix)', ms:132053},
+    {n:18, t:'I Need You (1965 stereo mix)', ms:152320},
+    {n:19, t:'Another Girl (1965 stereo mix)', ms:129386},
+    {n:20, t:'You\'re Going to Lose That Girl (1965 stereo mix)', ms:141480},
+    {n:21, t:'Ticket to Ride (1965 stereo mix)', ms:191986},
+    {n:22, t:'Act Naturally (1965 stereo mix)', ms:153480},
+    {n:23, t:'It\'s Only Love (1965 stereo mix)', ms:119560},
+    {n:24, t:'You Like Me Too Much (1965 stereo mix)', ms:159920},
+    {n:25, t:'Tell Me What You See (1965 stereo mix)', ms:160760},
+    {n:26, t:'I\'ve Just Seen a Face (1965 stereo mix)', ms:128400},
+    {n:27, t:'Yesterday (1965 stereo mix)', ms:129133},
+    {n:28, t:'Dizzy Miss Lizzy (1965 stereo mix)', ms:174560},
+  ]}]},
+  { title: 'Rubber Soul',                         origYear: 1965, discNums: [6],      art: ART.rubberSoul,        discs: [{ discNum: 6, tracks: [
+    {n:1, t:'Drive My Car', ms:153906},             {n:2, t:'Norwegian Wood (This Bird Has Flown)', ms:128666},
+    {n:3, t:'You Won\'t See Me', ms:210453},        {n:4, t:'Nowhere Man', ms:166693},
+    {n:5, t:'Think for Yourself', ms:141520},       {n:6, t:'The Word', ms:168706},
+    {n:7, t:'Michelle', ms:160493},                 {n:8, t:'What Goes On', ms:171626},
+    {n:9, t:'Girl', ms:154453},                    {n:10, t:'I\'m Looking Through You', ms:154026},
+    {n:11, t:'In My Life', ms:149986},             {n:12, t:'Wait', ms:137920},
+    {n:13, t:'If I Needed Someone', ms:145466},    {n:14, t:'Run for Your Life', ms:150813},
+    {n:15, t:'Drive My Car (1965 stereo mix)', ms:152133},
+    {n:16, t:'Norwegian Wood (This Bird Has Flown) (1965 stereo mix)', ms:127880},
+    {n:17, t:'You Won\'t See Me (1965 stereo mix)', ms:204626},
+    {n:18, t:'Nowhere Man (1965 stereo mix)', ms:166866},
+    {n:19, t:'Think for Yourself (1965 stereo mix)', ms:141240},
+    {n:20, t:'The Word (1965 stereo mix)', ms:167560},
+    {n:21, t:'Michelle (1965 stereo mix)', ms:166800},
+    {n:22, t:'What Goes On (1965 stereo mix)', ms:170773},
+    {n:23, t:'Girl (1965 stereo mix)', ms:153133},
+    {n:24, t:'I\'m Looking Through You (1965 stereo mix)', ms:148786},
+    {n:25, t:'In My Life (1965 stereo mix)', ms:149546},
+    {n:26, t:'Wait (1965 stereo mix)', ms:137440},
+    {n:27, t:'If I Needed Someone (1965 stereo mix)', ms:145053},
+    {n:28, t:'Run for Your Life (1965 stereo mix)', ms:141906},
+  ]}]},
+  { title: 'Revolver',                            origYear: 1966, discNums: [7],      art: ART.revolver,          discs: [{ discNum: 7, tracks: [
+    {n:1, t:'Taxman', ms:162346},                  {n:2, t:'Eleanor Rigby', ms:129466},
+    {n:3, t:'I\'m Only Sleeping', ms:183013},      {n:4, t:'Love You To', ms:187586},
+    {n:5, t:'Here, There and Everywhere', ms:145880}, {n:6, t:'Yellow Submarine', ms:161960},
+    {n:7, t:'She Said She Said', ms:159466},       {n:8, t:'Good Day Sunshine', ms:132280},
+    {n:9, t:'And Your Bird Can Sing', ms:122826},  {n:10, t:'For No One', ms:122266},
+    {n:11, t:'Doctor Robert', ms:136840},          {n:12, t:'I Want to Tell You', ms:151506},
+    {n:13, t:'Got to Get You Into My Life', ms:158680}, {n:14, t:'Tomorrow Never Knows', ms:177760},
+  ]}]},
+  { title: 'Sgt. Pepper\'s Lonely Hearts Club Band', origYear: 1967, discNums: [8],  art: ART.sgtPeppers,        discs: [{ discNum: 8, tracks: [
+    {n:1, t:'Sgt. Pepper\'s Lonely Hearts Club Band', ms:122426},
+    {n:2, t:'With a Little Help From My Friends', ms:164000},
+    {n:3, t:'Lucy in the Sky With Diamonds', ms:210440},
+    {n:4, t:'Getting Better', ms:169866},           {n:5, t:'Fixing a Hole', ms:158626},
+    {n:6, t:'She\'s Leaving Home', ms:217040},      {n:7, t:'Being for the Benefit of Mr. Kite!', ms:159093},
+    {n:8, t:'Within You Without You', ms:307066},   {n:9, t:'When I\'m Sixty‐Four', ms:159706},
+    {n:10, t:'Lovely Rita', ms:164093},            {n:11, t:'Good Morning Good Morning', ms:163306},
+    {n:12, t:'Sgt. Pepper\'s Lonely Hearts Club Band (Reprise)', ms:78893},
+    {n:13, t:'A Day in the Life', ms:333906},
+  ]}]},
+  { title: 'Magical Mystery Tour',                origYear: 1967, discNums: [9],      art: ART.magicalMysteryTour, discs: [{ discNum: 9, tracks: [
+    {n:1, t:'Magical Mystery Tour', ms:173853},    {n:2, t:'The Fool on the Hill', ms:182200},
+    {n:3, t:'Flying', ms:138986},                  {n:4, t:'Blue Jay Way', ms:238733},
+    {n:5, t:'Your Mother Should Know', ms:151626}, {n:6, t:'I Am the Walrus', ms:279093},
+    {n:7, t:'Hello Goodbye', ms:213493},           {n:8, t:'Strawberry Fields Forever', ms:252520},
+    {n:9, t:'Penny Lane', ms:185400},              {n:10, t:'Baby You\'re a Rich Man', ms:185786},
+    {n:11, t:'All You Need Is Love', ms:228466},
+  ]}]},
+  { title: 'The Beatles (White Album)',            origYear: 1968, discNums: [10, 11], art: ART.whiteAlbum,        discs: [
+    { discNum: 10, tracks: [
+      {n:1, t:'Back in the U.S.S.R.', ms:164040},  {n:2, t:'Dear Prudence', ms:234133},
+      {n:3, t:'Glass Onion', ms:137720},            {n:4, t:'Ob‐La‐Di, Ob‐La‐Da', ms:189413},
+      {n:5, t:'Wild Honey Pie', ms:54093},          {n:6, t:'The Continuing Story of Bungalow Bill', ms:194200},
+      {n:7, t:'While My Guitar Gently Weeps', ms:287920}, {n:8, t:'Happiness Is a Warm Gun', ms:164413},
+      {n:9, t:'Martha My Dear', ms:148306},         {n:10, t:'I\'m So Tired', ms:123306},
+      {n:11, t:'Blackbird', ms:138920},             {n:12, t:'Piggies', ms:123120},
+      {n:13, t:'Rocky Raccoon', ms:212653},         {n:14, t:'Don\'t Pass Me By', ms:225506},
+      {n:15, t:'Why Don\'t We Do It in the Road?', ms:101600}, {n:16, t:'I Will', ms:105080},
+      {n:17, t:'Julia', ms:173946},
+    ]},
+    { discNum: 11, tracks: [
+      {n:1, t:'Birthday', ms:162653},              {n:2, t:'Yer Blues', ms:253600},
+      {n:3, t:'Mother Nature\'s Son', ms:166293},  {n:4, t:'Everybody\'s Got Something to Hide Except Me and My Monkey', ms:145106},
+      {n:5, t:'Sexy Sadie', ms:194946},            {n:6, t:'Helter Skelter', ms:219173},
+      {n:7, t:'Long, Long, Long', ms:185453},      {n:8, t:'Revolution 1', ms:255653},
+      {n:9, t:'Honey Pie', ms:160520},             {n:10, t:'Savoy Truffle', ms:174080},
+      {n:11, t:'Cry Baby Cry', ms:181640},         {n:12, t:'Revolution 9', ms:503173},
+      {n:13, t:'Good Night', ms:192946},
+    ]},
+  ]},
+  { title: 'Mono Masters',                        origYear: 1962, discNums: [12, 13], art: ART.monoMasters,       discs: [
+    { discNum: 12, tracks: [
+      {n:1, t:'Love Me Do (original single version)', ms:144866, credit:'drums: Ringo Starr'},
+      {n:2, t:'From Me to You', ms:117013},        {n:3, t:'Thank You Girl', ms:123720},
+      {n:4, t:'She Loves You', ms:141426},         {n:5, t:'I\'ll Get You', ms:125973},
+      {n:6, t:'I Want to Hold Your Hand', ms:146493}, {n:7, t:'This Boy', ms:136106},
+      {n:8, t:'Komm, gib mir deine Hand', ms:145746}, {n:9, t:'Sie liebt dich', ms:139440},
+      {n:10, t:'Long Tall Sally', ms:122933},      {n:11, t:'I Call Your Name', ms:131200},
+      {n:12, t:'Slow Down', ms:177200},            {n:13, t:'Matchbox', ms:118653},
+      {n:14, t:'I Feel Fine', ms:143080},          {n:15, t:'She\'s a Woman', ms:183840},
+      {n:16, t:'Bad Boy', ms:139546},              {n:17, t:'Yes It Is', ms:162026},
+      {n:18, t:'I\'m Down', ms:157733},
+    ]},
+    { discNum: 13, tracks: [
+      {n:1, t:'Day Tripper', ms:172453},           {n:2, t:'We Can Work It Out', ms:135213},
+      {n:3, t:'Paperback Writer', ms:145720},      {n:4, t:'Rain', ms:181426},
+      {n:5, t:'Lady Madonna', ms:137266},          {n:6, t:'The Inner Light', ms:156453},
+      {n:7, t:'Hey Jude', ms:439693},              {n:8, t:'Revolution', ms:204546},
+      {n:9, t:'Only a Northern Song', ms:205920},  {n:10, t:'All Together Now', ms:131453},
+      {n:11, t:'Hey Bulldog', ms:194453},          {n:12, t:'It\'s All Too Much', ms:382040},
+      {n:13, t:'Get Back', ms:191266, credit:'with Billy Preston'},
+      {n:14, t:'Don\'t Let Me Down', ms:212920, credit:'with Billy Preston'},
+      {n:15, t:'Across the Universe', ms:229840},  {n:16, t:'You Know My Name (Look Up the Number)', ms:264320},
+    ]},
+  ]},
+];
+
+
+BEATLES.art = ART.beatlesBox;
+GD.art = 'https://live.staticflickr.com/3857/33706685026_e5965a7218_z.jpg';
+
+const MD_ART = 'https://coverartarchive.org/release/98db4007-565e-45f9-a7ad-496dc8c669d1/44789522217-500.jpg';
+
+const MD = {
+  id: 'md',
+  title: 'The Complete Live at the Plugged Nickel 1965',
+  artist: 'Miles Davis',
+  label: 'Sony Music',
+  year: 2026,
+  emoji: '🎺',
+  colorClass: 'md',
+  discs: [
+    { discNum: 1, title: 'December 22, 1965 — 1st Set', origYear: 1965, tracks: [
+      { n: 1, t: 'If I Were a Bell', ms: 1022093 },
+      { n: 2, t: 'Stella by Starlight', ms: 768800 },
+      { n: 3, t: 'Walkin\'', ms: 954506 },
+      { n: 4, t: 'I Fall in Love Too Easily', ms: 704093 },
+      { n: 5, t: 'The Theme', ms: 622440 },
+    ]},
+    { discNum: 2, title: 'December 22, 1965 — 2nd Set (Part 1)', origYear: 1965, tracks: [
+      { n: 1, t: 'My Funny Valentine', ms: 1000866 },
+      { n: 2, t: 'Four', ms: 905826 },
+      { n: 3, t: 'When I Fall in Love', ms: 654906 },
+    ]},
+    { discNum: 3, title: 'December 22, 1965 — 2nd Set (Part 2)', origYear: 1965, tracks: [
+      { n: 1, t: 'Agitation', ms: 799626 },
+      { n: 2, t: '’Round About Midnight', ms: 522373 },
+      { n: 3, t: 'Milestones', ms: 846533 },
+      { n: 4, t: 'The Theme', ms: 38693 },
+    ]},
+    { discNum: 4, title: 'December 22, 1965 — 3rd Set', origYear: 1965, tracks: [
+      { n: 1, t: 'All of You', ms: 881826 },
+      { n: 2, t: 'Oleo', ms: 365466 },
+      { n: 3, t: 'I Fall in Love Too Easily', ms: 713466 },
+      { n: 4, t: 'No Blues', ms: 1055066 },
+      { n: 5, t: 'I Thought About You', ms: 664466 },
+      { n: 6, t: 'The Theme', ms: 479266 },
+    ]},
+    { discNum: 5, title: 'December 23, 1965 — 1st Set', origYear: 1965, tracks: [
+      { n: 1, t: 'If I Were a Bell', ms: 814133 },
+      { n: 2, t: 'Stella by Starlight', ms: 788400 },
+      { n: 3, t: 'Walkin\'', ms: 662133 },
+      { n: 4, t: 'I Fall in Love Too Easily', ms: 726666 },
+      { n: 5, t: 'The Theme', ms: 180200 },
+    ]},
+    { discNum: 6, title: 'December 23, 1965 — 2nd Set', origYear: 1965, tracks: [
+      { n: 1, t: 'All of You', ms: 651826 },
+      { n: 2, t: 'Agitation', ms: 649600 },
+      { n: 3, t: 'My Funny Valentine', ms: 839106 },
+      { n: 4, t: 'On Green Dolphin Street', ms: 782560 },
+      { n: 5, t: 'So What', ms: 819040 },
+      { n: 6, t: 'The Theme', ms: 213466 },
+    ]},
+    { discNum: 7, title: 'December 23, 1965 — 3rd Set', origYear: 1965, tracks: [
+      { n: 1, t: 'When I Fall in Love', ms: 824626 },
+      { n: 2, t: 'Milestones', ms: 697000 },
+      { n: 3, t: 'Autumn Leaves', ms: 725666 },
+      { n: 4, t: 'I Fall in Love Too Easily', ms: 705133 },
+      { n: 5, t: 'No Blues', ms: 1202106 },
+      { n: 6, t: 'The Theme', ms: 30293 },
+    ]},
+    { discNum: 8, title: 'December 23, 1965 — 4th Set', origYear: 1965, tracks: [
+      { n: 1, t: 'Stella by Starlight', ms: 860960 },
+      { n: 2, t: 'All Blues', ms: 744800 },
+      { n: 3, t: 'Yesterdays', ms: 905133 },
+      { n: 4, t: 'The Theme', ms: 304106 },
+    ]},
+  ],
+};
+
+MD.works = [
+  { title: 'December 22, 1965 — 1st Set',  origYear: 1965, discs: MD.discs.slice(0, 1), discNums: [1],    art: MD_ART },
+  { title: 'December 22, 1965 — 2nd Set',  origYear: 1965, discs: MD.discs.slice(1, 3), discNums: [2, 3], art: MD_ART },
+  { title: 'December 22, 1965 — 3rd Set',  origYear: 1965, discs: MD.discs.slice(3, 4), discNums: [4],    art: MD_ART },
+  { title: 'December 23, 1965 — 1st Set',  origYear: 1965, discs: MD.discs.slice(4, 5), discNums: [5],    art: MD_ART },
+  { title: 'December 23, 1965 — 2nd Set',  origYear: 1965, discs: MD.discs.slice(5, 6), discNums: [6],    art: MD_ART },
+  { title: 'December 23, 1965 — 3rd Set',  origYear: 1965, discs: MD.discs.slice(6, 7), discNums: [7],    art: MD_ART },
+  { title: 'December 23, 1965 — 4th Set',  origYear: 1965, discs: MD.discs.slice(7, 8), discNums: [8],    art: MD_ART },
+];
+MD.art = MD_ART;
+
+const TIM_ART = 'https://coverartarchive.org/release/4cd0e69f-c59e-4fc3-90f9-13b75481943c/36842745326-500.jpg';
+
+const TIM = {
+  id: 'tim',
+  title: 'Tim (Let It Bleed Edition)',
+  artist: 'The Replacements',
+  label: 'Sire Records',
+  year: 2023,
+  emoji: '🎸',
+  colorClass: 'tim',
+  discs: [
+    { discNum: 1, title: 'Tim (Ed Stasium mix)', origYear: 1985, tracks: [
+      { n:1,  t:'Hold My Life (Ed Stasium mix)',       ms:261386 },
+      { n:2,  t:'I\'ll Buy (Ed Stasium mix)',           ms:202106 },
+      { n:3,  t:'Kiss Me on the Bus (Ed Stasium mix)', ms:176013 },
+      { n:4,  t:'Dose of Thunder (Ed Stasium mix)',    ms:139013 },
+      { n:5,  t:'Waitress in the Sky (Ed Stasium mix)',ms:127906 },
+      { n:6,  t:'Swingin Party (Ed Stasium mix)',      ms:230093 },
+      { n:7,  t:'Bastards of Young (Ed Stasium mix)',  ms:217786 },
+      { n:8,  t:'Lay It Down Clown (Ed Stasium mix)',  ms:143680 },
+      { n:9,  t:'Left of the Dial (Ed Stasium mix)',   ms:222666 },
+      { n:10, t:'Little Mascara (Ed Stasium mix)',     ms:268720 },
+      { n:11, t:'Here Comes a Regular (Ed Stasium mix)',ms:296133 },
+    ]},
+    { discNum: 2, title: 'Tim (2023 remaster)', origYear: 1985, tracks: [
+      { n:1,  t:'Hold My Life',          ms:261560 },
+      { n:2,  t:'I\'ll Buy',             ms:205040 },
+      { n:3,  t:'Kiss Me on the Bus',    ms:174573 },
+      { n:4,  t:'Dose of Thunder',       ms:138800 },
+      { n:5,  t:'Waitress in the Sky',   ms:122906 },
+      { n:6,  t:'Swingin Party',         ms:231266 },
+      { n:7,  t:'Bastards of Young',     ms:218000 },
+      { n:8,  t:'Lay It Down Clown',     ms:144640 },
+      { n:9,  t:'Left of the Dial',      ms:223186 },
+      { n:10, t:'Little Mascara',        ms:216773 },
+      { n:11, t:'Here Comes a Regular',  ms:286000 },
+    ]},
+    { discNum: 3, title: 'Sons of No One: Rare and Unreleased', origYear: 1985, tracks: [
+      { n:1,  t:'Can\'t Hardly Wait (acoustic demo)',                  ms:231933 },
+      { n:2,  t:'Nowhere Is My Home (alternate mix)',                  ms:241000 },
+      { n:3,  t:'Can\'t Hardly Wait (electric demo)',                  ms:189000 },
+      { n:4,  t:'Left of the Dial (alternate version)',                ms:237000 },
+      { n:5,  t:'Nowhere Is My Home (alternate version)',              ms:263000 },
+      { n:6,  t:'Can\'t Hardly Wait (cello version)',                  ms:186053 },
+      { n:7,  t:'Kiss Me on the Bus (studio demo)',                    ms:179573 },
+      { n:8,  t:'Little Mascara (studio demo)',                        ms:241000 },
+      { n:9,  t:'Bastards of Young (alternate version)',               ms:220000 },
+      { n:10, t:'Hold My Life (alternate version)',                    ms:263000 },
+      { n:11, t:'Having Fun',                                          ms:176000 },
+      { n:12, t:'Waitress in the Sky (alternate version)',             ms:120880 },
+      { n:13, t:'Can\'t Hardly Wait (The "Tim" version)',              ms:189000 },
+      { n:14, t:'Swingin Party (alternate version)',                   ms:231000 },
+      { n:15, t:'Here Comes a Regular (alternate version)',            ms:271546 },
+    ]},
+    { discNum: 4, title: 'Not Ready for Prime Time: Live at Cabaret Metro, Chicago, January 11, 1986', origYear: 1986, tracks: [
+      { n:1,  t:'Gary\'s Got a Boner',        ms:116560 },
+      { n:2,  t:'Love You Till Friday',       ms:129000 },
+      { n:3,  t:'Bastards of Young',          ms:195000 },
+      { n:4,  t:'Can\'t Hardly Wait',         ms:184000 },
+      { n:5,  t:'Answering Machine',          ms:180786 },
+      { n:6,  t:'Little Mascara',             ms:204000 },
+      { n:7,  t:'Color Me Impressed',         ms:158000 },
+      { n:8,  t:'Kiss Me on the Bus',         ms:191600 },
+      { n:9,  t:'Favorite Thing',             ms:146973 },
+      { n:10, t:'Mr. Whirly',                 ms:107000 },
+      { n:11, t:'Tommy Gets His Tonsils Out', ms:122693 },
+      { n:12, t:'I Will Dare',                ms:202626 },
+      { n:13, t:'Johnny\'s Gonna Die',        ms:226000 },
+      { n:14, t:'Dose of Thunder',            ms:150000 },
+      { n:15, t:'Takin a Ride',               ms:148800 },
+      { n:16, t:'Hitchin\' a Ride',           ms:131000 },
+      { n:17, t:'Trouble Boys',               ms:131906 },
+      { n:18, t:'Unsatisfied',                ms:155613 },
+      { n:19, t:'Black Diamond',              ms:169773 },
+      { n:20, t:'Jumpin\' Jack Flash',        ms:243000 },
+      { n:21, t:'Customer',                   ms:93760  },
+      { n:22, t:'Borstal Breakout',           ms:121840 },
+      { n:23, t:'Take Me Down to the Hospital',ms:202840 },
+      { n:24, t:'Kids Don\'t Follow',         ms:164000 },
+      { n:25, t:'Nowhere Man',                ms:135760 },
+      { n:26, t:'The Crusher',                ms:89000  },
+      { n:27, t:'I\'m in Trouble',            ms:151000 },
+      { n:28, t:'Go',                         ms:182680 },
+    ]},
+  ],
+};
+
+TIM.works = TIM.discs.map(disc => ({
+  title: disc.title,
+  origYear: disc.origYear,
+  discs: [disc],
+  discNums: [disc.discNum],
+  art: TIM_ART,
+}));
+TIM.art = TIM_ART;
+
+// ── HYPERION ROMANTIC PIANO CONCERTO EDITION ─────────────────────────────────
+
+const HYPERION_DISCS = [
+  { discNum: 1, tracks: [
+    {n:1, t:'Piano Concerto in E major, op. 59: I. Moderato', ms:787333},
+    {n:2, t:'Piano Concerto in E major, op. 59: II. Andante', ms:497266},
+    {n:3, t:'Piano Concerto in E major, op. 59: III. Scherzo. Vivace', ms:391560},
+    {n:4, t:'Piano Concerto in E major, op. 59: IV. Allegro deciso', ms:556306},
+    {n:5, t:'Piano Concerto in A minor, op. 17: I. Allegro', ms:989893},
+    {n:6, t:'Piano Concerto in A minor, op. 17: II. Romanza. Andante', ms:608800},
+    {n:7, t:'Piano Concerto in A minor, op. 17: III. Allegro molto vivace', ms:512173},
+  ]},
+  { discNum: 2, tracks: [
+    {n:1, t:'Piano Concerto no. 2 in C minor, op. 50: I. Toccata. Allegro risoluto', ms:1057533},
+    {n:2, t:'Piano Concerto no. 2 in C minor, op. 50: II. Romanza. Andante con moto', ms:592226},
+    {n:3, t:'Piano Concerto no. 2 in C minor, op. 50: III. Divertimento. Allegro risoluto e molto vivace', ms:668466},
+    {n:4, t:'Piano Concerto no. 3 in E minor, op. 60: I. Con moto largamente', ms:921200},
+    {n:5, t:'Piano Concerto no. 3 in E minor, op. 60: II. Interludium. Allegro, molto sostenuto, misterioso', ms:96933},
+    {n:6, t:'Piano Concerto no. 3 in E minor, op. 60: III. Finale. Allegro molto, Svegliando, eroico', ms:1117200},
+  ]},
+  { discNum: 3, tracks: [
+    {n:1, t:'Concerto in A-flat major for Two Pianos: I. Allegro vivace', ms:1036000},
+    {n:2, t:'Concerto in A-flat major for Two Pianos: II. Andante', ms:610000},
+    {n:3, t:'Concerto in A-flat major for Two Pianos: III. Allegro vivace', ms:842000},
+    {n:4, t:'Concerto in E major for Two Pianos: I. Allegro vivace - Poco più allegro', ms:789000},
+    {n:5, t:'Concerto in E major for Two Pianos: II. Adagio non troppo', ms:535000},
+    {n:6, t:'Concerto in E major for Two Pianos: III. Allegro', ms:494000},
+  ]},
+  { discNum: 4, tracks: [
+    {n:1, t:'Piano Concerto in F minor, op. 2: I. Allegro maestoso', ms:728000},
+    {n:2, t:'Piano Concerto in F minor, op. 2: II. Andante con moto', ms:407000},
+    {n:3, t:'Piano Concerto in F minor, op. 2: III. Scherzo-Finale. Allegro molto', ms:400000},
+    {n:4, t:'Fantasia on Russian Folksongs, op. 48', ms:535000},
+    {n:5, t:'Piano Concerto no. 1 in B-flat major, op. 16: I. Lento - Allegro deciso', ms:1006000},
+    {n:6, t:'Piano Concerto no. 1 in B-flat major, op. 16: II. Andante sostenuto', ms:394000},
+    {n:7, t:'Piano Concerto no. 1 in B-flat major, op. 16: III. Molto vivace e con brio', ms:734000},
+  ]},
+  { discNum: 5, tracks: [
+    {n:1, t:'Piano Concerto in C-sharp minor, op. 30: I. Moderato - Allegretto quasi polacca', ms:382066},
+    {n:2, t:'Piano Concerto in C-sharp minor, op. 30: II. Andante mosso', ms:255960},
+    {n:3, t:'Piano Concerto in C-sharp minor, op. 30: III. Allegro', ms:243600},
+    {n:4, t:'Piano Concerto no. 1 in F-sharp minor, op. 1', ms:822306},
+    {n:5, t:'Piano Concerto no. 2 in E-flat major, op. posth: I. Allegro non troppo', ms:787893},
+    {n:6, t:'Piano Concerto no. 2 in E-flat major, op. posth: II. Adagio', ms:607640},
+    {n:7, t:'Piano Concerto no. 2 in E-flat major, op. posth: III. Allegro risoluto', ms:534093},
+  ]},
+  { discNum: 6, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in E minor, op. 5: I. Adagio maestoso – Allegro – Adagio', ms:1082000},
+    {n:2, t:'Piano Concerto no. 1 in E minor, op. 5: II. Andante', ms:602000},
+    {n:3, t:'Piano Concerto no. 1 in E minor, op. 5: III. Vivace – Cadenza con orchestra – Vivace', ms:1027000},
+    {n:4, t:'Piano Concerto no. 2 in B minor, op. 42: I. Allegro —', ms:852000},
+    {n:5, t:'Piano Concerto no. 2 in B minor, op. 42: II. Adagio, poco rubato —', ms:464000},
+    {n:6, t:'Piano Concerto no. 2 in B minor, op. 42: III. Allegro vivace', ms:471000},
+  ]},
+  { discNum: 7, tracks: [
+    {n:1, t:'Piano Concerto in F minor, op. 16: I. Allegro patetico - Religioso - Reprise', ms:824333},
+    {n:2, t:'Piano Concerto in F minor, op. 16: II. Larghetto', ms:486226},
+    {n:3, t:'Piano Concerto in F minor, op. 16: III. Allegro agitato', ms:494666},
+    {n:4, t:'Variations de concert, op. 11: Introduzione (Larghetto ma non troppo) -', ms:189306},
+    {n:5, t:'Variations de concert, op. 11: Theme (Moderato) -', ms:72426},
+    {n:6, t:'Variations de concert, op. 11: Variation 1 (Grazioso assai) -', ms:72773},
+    {n:7, t:'Variations de concert, op. 11: Variation 2 (Un poco più lento e sostenuto) -', ms:82760},
+    {n:8, t:'Variations de concert, op. 11: Variation 3 (Scherzando) -', ms:67533},
+    {n:9, t:'Variations de concert, op. 11: Variation 4 (Con fuoco e pomposo) -', ms:112240},
+    {n:10, t:'Variations de concert, op. 11: Variation 5 (Vivace ma non troppo) -', ms:95960},
+    {n:11, t:'Variations de concert, op. 11: Adagio - Cadenza -', ms:183866},
+    {n:12, t:'Variations de concert, op. 11: Finale (Allegro vivace)', ms:195506},
+    {n:13, t:'Concerto da camera in C-sharp minor, op. 10 no. 2: I. Allegro moderato -', ms:169960},
+    {n:14, t:'Concerto da camera in C-sharp minor, op. 10 no. 2: II. Adagio -', ms:183000},
+    {n:15, t:'Concerto da camera in C-sharp minor, op. 10 no. 2: III. Tempo I', ms:107400},
+    {n:16, t:'Concerto da camera in A minor, op. 10 no. 1: I. Allegro moderato -', ms:287973},
+    {n:17, t:'Concerto da camera in A minor, op. 10 no. 1: II. Adagio -', ms:177866},
+    {n:18, t:'Concerto da camera in A minor, op. 10 no. 1: III. Rondo. Allegro', ms:392026},
+  ]},
+  { discNum: 8, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in C minor, op. 33: I. Allegro -', ms:712800},
+    {n:2, t:'Piano Concerto no. 1 in C minor, op. 33: II. Theme and Variations -', ms:793400},
+    {n:3, t:'Piano Concerto no. 1 in C minor, op. 33: III. Recapitulation -', ms:152426},
+    {n:4, t:'Piano Concerto no. 1 in C minor, op. 33: IV. Coda. Allegro molto', ms:398106},
+    {n:5, t:'Piano Quintet in C major, op. posth: I. Molto placido', ms:467066},
+    {n:6, t:'Piano Quintet in C major, op. posth: II. Andantino con moto', ms:294333},
+    {n:7, t:'Piano Quintet in C major, op. posth: III. Finale. Allegro vivace', ms:718933},
+  ]},
+  { discNum: 9, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in B minor, op. 2: Mässig —', ms:1024000},
+    {n:2, t:'Piano Concerto no. 1 in B minor, op. 2: Langsam, mit Empfindung —', ms:564000},
+    {n:3, t:'Piano Concerto no. 1 in B minor, op. 2: Erstes Zeitmass —', ms:690000},
+    {n:4, t:'Piano Concerto no. 1 in B minor, op. 2: Cadenza —', ms:173000},
+    {n:5, t:'Piano Concerto no. 1 in B minor, op. 2: Dasselbe Zeitmass', ms:201000},
+    {n:6, t:'Piano Concerto no. 2 in E major, op. 12: Mässig bewegt —', ms:458000},
+    {n:7, t:'Piano Concerto no. 2 in E major, op. 12: Langsam —', ms:406000},
+    {n:8, t:'Piano Concerto no. 2 in E major, op. 12: Sehr lebhaft —', ms:135000},
+    {n:9, t:'Piano Concerto no. 2 in E major, op. 12: "Wie vorher" (crotchet - dotted crochet)', ms:267000},
+  ]},
+  { discNum: 10, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in C major, J. 98: I. Allegro', ms:529000},
+    {n:2, t:'Piano Concerto no. 1 in C major, J. 98: II. Adagio', ms:262000},
+    {n:3, t:'Piano Concerto no. 1 in C major, J. 98: III. Presto', ms:390000},
+    {n:4, t:'Piano Concerto no. 2 in E-flat major, J. 155: I. Allegro maestoso', ms:537000},
+    {n:5, t:'Piano Concerto no. 2 in E-flat major, J. 155: II. Adagio', ms:340000},
+    {n:6, t:'Piano Concerto no. 2 in E-flat major, J. 155: III. Rondo. Presto', ms:416000},
+    {n:7, t:'Konzertstück in F minor, J. 282: I. Larghetto affettuoso', ms:302000},
+    {n:8, t:'Konzertstück in F minor, J. 282: II. Allegro passionato', ms:274000},
+    {n:9, t:'Konzertstück in F minor, J. 282: III. Tempo di Marcia', ms:108000},
+    {n:10, t:'Konzertstück in F minor, J. 282: IV. Più mosso - Presto giojoso', ms:268000},
+  ]},
+  { discNum: 11, tracks: [
+    {n:1, t:'Piano Concerto no. 4 in F minor, op. 82: I. Allegro patetico', ms:1119826},
+    {n:2, t:'Piano Concerto no. 4 in F minor, op. 82: II. Intermezzo. Allegretto molto tranquillo', ms:416000},
+    {n:3, t:'Piano Concerto no. 4 in F minor, op. 82: III. Lento, mesto', ms:445000},
+    {n:4, t:'Piano Concerto no. 4 in F minor, op. 82: IV. Allegro con fuoco', ms:401506},
+    {n:5, t:'Piano Concerto no. 1 in E minor: I. Allegro patetico', ms:660000},
+    {n:6, t:'Piano Concerto no. 1 in E minor: II. Scherzo. Molto vivace - Andante con moto, quasi allegretto - Tempo I', ms:411493},
+    {n:7, t:'Piano Concerto no. 1 in E minor: III. Cavatina. Larghetto amoroso', ms:465000},
+    {n:8, t:'Piano Concerto no. 1 in E minor: IV. Rondo. Tempo giusto', ms:276173},
+  ]},
+  { discNum: 12, tracks: [
+    {n:1, t:'Piano Concerto in F-sharp major: I. Allegro maestoso', ms:713000},
+    {n:2, t:'Piano Concerto in F-sharp major: II. Maestoso', ms:552000},
+    {n:3, t:'Piano Concerto in F-sharp major: III. Allegro vivace', ms:838000},
+    {n:4, t:'Piano Concerto no. 1 in G major, op. 59: I. Allegro comodo', ms:917000},
+    {n:5, t:'Piano Concerto no. 1 in G major, op. 59: II. Adagio molto', ms:783000},
+    {n:6, t:'Piano Concerto no. 1 in G major, op. 59: III. Allegro e giocoso', ms:587000},
+  ]},
+  { discNum: 13, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in F minor, op. 92: I. Allegro moderato', ms:796000},
+    {n:2, t:'Piano Concerto no. 1 in F minor, op. 92: II. (a) Tema con variazioni. Tema. Andantino tranquillo', ms:92000},
+    {n:3, t:'Piano Concerto no. 1 in F minor, op. 92: II. (b) Tema con variazioni. Variation 1', ms:78000},
+    {n:4, t:'Piano Concerto no. 1 in F minor, op. 92: II. (c) Tema con variazioni. Variation 2 "Chromatica". Andantino', ms:65000},
+    {n:5, t:'Piano Concerto no. 1 in F minor, op. 92: II. (d) Tema con variazioni. Variation 3 "Eroica". Allegro moderato', ms:65000},
+    {n:6, t:'Piano Concerto no. 1 in F minor, op. 92: II. (e) Tema con variazioni. Variation 4 "Lyrica". Adagio', ms:188000},
+    {n:7, t:'Piano Concerto no. 1 in F minor, op. 92: II. (f) Tema con variazioni. Variation 5 "Intermezzo". Allegro', ms:53000},
+    {n:8, t:'Piano Concerto no. 1 in F minor, op. 92: II. (g) Tema con variazioni. Variation 6 "Quasi una fantasia". Lento', ms:124000},
+    {n:9, t:'Piano Concerto no. 1 in F minor, op. 92: II. (h) Tema con variazioni. Variation 7 "Mazurka". Allegretto', ms:95000},
+    {n:10, t:'Piano Concerto no. 1 in F minor, op. 92: II. (i) Tema con variazioni. Variation 8 "Scherzo". Allegro ma non troppo', ms:108000},
+    {n:11, t:'Piano Concerto no. 1 in F minor, op. 92: II. (j) Tema con variazioni. Variation 9 "Finale". Allegro moderato', ms:220000},
+    {n:12, t:'Piano Concerto no. 2 in B major, op. 100: I. Andante sostenuto - Allegro - Più moderato', ms:400000},
+    {n:13, t:'Piano Concerto no. 2 in B major, op. 100: II. Andante - Moderato tranquillo', ms:193000},
+    {n:14, t:'Piano Concerto no. 2 in B major, op. 100: III. Allegro - Allegretto scherzando - Allegro moderato - Con moto', ms:630000},
+    {n:15, t:'Concertstück in D major, op. 11', ms:830000},
+  ]},
+  { discNum: 14, tracks: [
+    {n:1, t:'Concerto Symphonique no. 2 in B minor, op. 22: I. Maestoso', ms:971493},
+    {n:2, t:'Concerto Symphonique no. 2 in B minor, op. 22: II. Scherzo', ms:247200},
+    {n:3, t:'Concerto Symphonique no. 2 in B minor, op. 22: III. Andante —', ms:320133},
+    {n:4, t:'Concerto Symphonique no. 2 in B minor, op. 22: IV. Rondo. Allegretto', ms:407906},
+    {n:5, t:'Concerto Symphonique no. 4 in D minor, op. 102: I. Allegro con fuoco', ms:817000},
+    {n:6, t:'Concerto Symphonique no. 4 in D minor, op. 102: II. Scherzo. Presto', ms:389933},
+    {n:7, t:'Concerto Symphonique no. 4 in D minor, op. 102: III. Adagio religioso', ms:448400},
+    {n:8, t:'Concerto Symphonique no. 4 in D minor, op. 102: IV. Allegro impetuoso', ms:626466},
+  ]},
+  { discNum: 15, tracks: [
+    {n:1, t:'Piano Concerto in E‐flat major: I. Andante moderato – Allegro non troppo', ms:862160},
+    {n:2, t:'Piano Concerto in E‐flat major: II. Largo', ms:580333},
+    {n:3, t:'Piano Concerto in E‐flat major: III. Airs slovaques. Allegro', ms:434333},
+    {n:4, t:'Piano Concerto in E major: I. Improvisation. Modéré très librement', ms:720506},
+    {n:5, t:'Piano Concerto in E major: II. Danse. Vif', ms:167000},
+    {n:6, t:'Piano Concerto in E major: III. Rêverie, Toccata et Finale. Lent – Gai, fortement rythme (pas trop vite) – Allegro', ms:823666},
+  ]},
+  { discNum: 16, tracks: [
+    {n:1, t:'Concerto for Piano and Orchestra in B major, op. 10: I. Allegro maestoso', ms:841000},
+    {n:2, t:'Concerto for Piano and Orchestra in B major, op. 10: II. Andante tranquillo', ms:457000},
+    {n:3, t:'Concerto for Piano and Orchestra in B major, op. 10: III. Finale. Allegro vivace', ms:551000},
+    {n:4, t:'Suite fantastique for Piano and Orchestra, op. 7: I. Allegro marziale', ms:622000},
+    {n:5, t:'Suite fantastique for Piano and Orchestra, op. 7: II. Scherzo. Molto vivace, scherzando e molto leggiero', ms:236000},
+    {n:6, t:'Suite fantastique for Piano and Orchestra, op. 7: III. Intermezzo', ms:475000},
+    {n:7, t:'Suite fantastique for Piano and Orchestra, op. 7: IV. Virginia Reel. Molto vivace', ms:416000},
+  ]},
+  { discNum: 17, tracks: [
+    {n:1, t:'Capriccio Brillant in B minor, op. 22', ms:646493},
+    {n:2, t:'Piano Concerto no. 1 in G minor, op. 25: I. Molto allegro con fuoco -', ms:435933},
+    {n:3, t:'Piano Concerto no. 1 in G minor, op. 25: II. Andante -', ms:337640},
+    {n:4, t:'Piano Concerto no. 1 in G minor, op. 25: III. Presto - Molto allegro e vivace', ms:407426},
+    {n:5, t:'Rondo Brilliant in E-flat major, op. 29', ms:650666},
+    {n:6, t:'Piano Concerto no. 2 in D minor, op. 40: I. Allegro appassionato -', ms:549240},
+    {n:7, t:'Piano Concerto no. 2 in D minor, op. 40: II. Adagio: Molto sostenuto -', ms:301266},
+    {n:8, t:'Piano Concerto no. 2 in D minor, op. 40: III. Finale. Presto scherzando', ms:417000},
+    {n:9, t:'Serenade and Allegro giocoso in B minor, op. 43', ms:771333},
+  ]},
+  { discNum: 18, tracks: [
+    {n:1, t:'Romantisches Klavierkonzert in E major: I. Lebhaft (Allegro moderato)', ms:892333},
+    {n:2, t:'Romantisches Klavierkonzert in E major: II. Nicht zu langsam (Andante affettuoso)', ms:647666},
+    {n:3, t:'Romantisches Klavierkonzert in E major: III. Sehr lebhaft (Allegro molto)', ms:680000},
+    {n:4, t:'Piano Concerto in C-sharp for the Left Hand, op. 17: [ ]', ms:191893},
+    {n:5, t:'Piano Concerto in C-sharp for the Left Hand, op. 17: [ ]', ms:158440},
+    {n:6, t:'Piano Concerto in C-sharp for the Left Hand, op. 17: [ ]', ms:137066},
+    {n:7, t:'Piano Concerto in C-sharp for the Left Hand, op. 17: [ ]', ms:308093},
+    {n:8, t:'Piano Concerto in C-sharp for the Left Hand, op. 17: [ ]', ms:116573},
+    {n:9, t:'Piano Concerto in C-sharp for the Left Hand, op. 17: [ ]', ms:166600},
+    {n:10, t:'Piano Concerto in C-sharp for the Left Hand, op. 17: [ ]', ms:191800},
+    {n:11, t:'Piano Concerto in C-sharp for the Left Hand, op. 17: [ ]', ms:71426},
+    {n:12, t:'Piano Concerto in C-sharp for the Left Hand, op. 17: [ ]', ms:169866},
+    {n:13, t:'Piano Concerto in C-sharp for the Left Hand, op. 17: [ ]', ms:150573},
+  ]},
+  { discNum: 19, tracks: [
+    {n:1, t:'Piano Concerto in A major, op. 15: I. Energico', ms:937000},
+    {n:2, t:'Piano Concerto in A major, op. 15: II. Adagio ma non troppo', ms:474000},
+    {n:3, t:'Piano Concerto in A major, op. 15: III. Alla marcia, non presto - Presto', ms:599000},
+    {n:4, t:'Scottish Concerto, op. 55: I. Allegro maestoso - Allegretto - Andantino - Allegretto - Andantino - Maestoso - Cadenza -', ms:594000},
+    {n:5, t:'Scottish Concerto, op. 55: II. Molto lento', ms:560000},
+    {n:6, t:'Scottish Concerto, op. 55: III. Allegro vivace (ma non presto all\' principio) - Andante tranquillo, quasi dolente - Tempo I - Molto più mosso - Più mosso ancora', ms:535000},
+  ]},
+  { discNum: 20, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in F major, op. 10: I. Allegro moderato - [Cadenza] - Tempo I', ms:819000},
+    {n:2, t:'Piano Concerto no. 1 in F major, op. 10: II. Andante. Molto espressivo -', ms:321000},
+    {n:3, t:'Piano Concerto no. 1 in F major, op. 10: III. Finale. Presto', ms:483000},
+    {n:4, t:'Andante and Allegro, op. 88: I. Andante moderato, con moto', ms:386000},
+    {n:5, t:'Andante and Allegro, op. 88: II. Allegro vivace', ms:582000},
+    {n:6, t:'Piano Concerto no. 2 in C major, op. 24: I. Allegro moderato', ms:819000},
+    {n:7, t:'Piano Concerto no. 2 in C major, op. 24: II. Andante ma non troppo', ms:510000},
+    {n:8, t:'Piano Concerto no. 2 in C major, op. 24: III. Allegro', ms:440000},
+  ]},
+  { discNum: 21, tracks: [
+    {n:1, t:'Piano Concerto in C minor, op. 55: I. Allegro', ms:984000},
+    {n:2, t:'Piano Concerto in C minor, op. 55: II. Adagio', ms:502000},
+    {n:3, t:'Piano Concerto in C minor, op. 55: III. Allegro moderato ma con fuoco', ms:616000},
+    {n:4, t:'Piano Concerto in D minor, op. 137: I. Allegro ma non troppo', ms:607000},
+    {n:5, t:'Piano Concerto in D minor, op. 137: II. Andante con moto', ms:370000},
+    {n:6, t:'Piano Concerto in D minor, op. 137: III. Allegro vivace', ms:489000},
+  ]},
+  { discNum: 22, tracks: [
+    {n:1, t:'Piano Concerto in C major, op. 39: I. Prologo e introito (Allegro, dolce e solenne)', ms:936000},
+    {n:2, t:'Piano Concerto in C major, op. 39: II. Pezzo giocoso (Vivacemente, ma senza fretta)', ms:587760},
+    {n:3, t:'Piano Concerto in C major, op. 39: IIIa. Pezzo serioso: Introductio (Andante sostenuto, pensoso)', ms:242506},
+    {n:4, t:'Piano Concerto in C major, op. 39: IIIb. Pezzo serioso: Prima pars (Andante, quasi adagio)', ms:283200},
+    {n:5, t:'Piano Concerto in C major, op. 39: IIIc. Pezzo serioso: Altera pars (Sommessamente)', ms:690426},
+    {n:6, t:'Piano Concerto in C major, op. 39: IIId. Pezzo serioso: Ultima pars (A tempo)', ms:177840},
+    {n:7, t:'Piano Concerto in C major, op. 39: IV. All\' italiana (Tarantella) (Vivace; In un tempo)', ms:737066},
+    {n:8, t:'Piano Concerto in C major, op. 39: V. Cantico (Largamente)', ms:652666},
+  ]},
+  { discNum: 23, tracks: [
+    {n:1, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": Ia. Maestoso allegro "Open the Gates of the Mirrored Horn"', ms:125000},
+    {n:2, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": Ib. Animato "Ye Guards of My Hold Whom Wanderers Fear"', ms:50000},
+    {n:3, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": Ic. A tempo "Harness a Steed From the Gnomes Dark Fields"', ms:18000},
+    {n:4, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": Id. A tempo "Vapour of Night Be Thou My Shield"', ms:136000},
+    {n:5, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": Ie. "Swift Through the Dell Where the Young Bats Wake"', ms:49000},
+    {n:6, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": If. A tempo "The Armies of Night Are Abroad"', ms:59000},
+    {n:7, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": Ig. Tempo primo "Here Lies the Field That Was Laid to Our Hand"', ms:139000},
+    {n:8, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": Ih. "Deep in the Mould Lies the Golden Helmed All"', ms:137000},
+    {n:9, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": Ii. Più mosso al fine "No Spectre of Them Will Answer My Call"', ms:50000},
+    {n:10, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIa. Poco adagio con sentimento "Faint as the Faith of Our People Long Dying"', ms:265000},
+    {n:11, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIb. Tempo poco allegretto poco scherzando "Clotted of Shadows He Comes to Myu Hest"', ms:150000},
+    {n:12, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIc. Tempo I "Daughter of Lear"', ms:72000},
+    {n:13, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IId. "O God of Our Torment Lean Down and Decide That We Shall Never Meet Again"', ms:83000},
+    {n:14, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIIa. Allegro, molto fuoco "Blade That Meets Blade With Never a Sound"', ms:80000},
+    {n:15, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIIb. "Face Me Afresh Though the Night Hour Fails"', ms:62000},
+    {n:16, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIIc. Tempo poco larghetto "Back to Your Grave"', ms:94000},
+    {n:17, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIId. Tempo primo "Break Back From the Battle"', ms:51000},
+    {n:18, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIIe. "Away From This Land, Fairy Folk All"', ms:48000},
+    {n:19, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIIf. Poco lento: "Flit Ye Away While the Shadows Mate Branch and Bless Earth"', ms:137000},
+    {n:20, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIIg. L\'Istesso tempo (Doppio) "For Scorn Follows on the Fairy King\'s Fate"', ms:52000},
+    {n:21, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIIh. Cadenza', ms:193000},
+    {n:22, t:'Piano Concerto no. 1, op. 52 "The Song of Gwyn ap Nudd": IIIi. Grandioso - Brilliante "She Was the Most Splendid Maiden"', ms:126000},
+    {n:23, t:'Concerto for Piano and Orchestra in D minor: I. Maestoso e moderato - Tranquillo - Cadenza - Allegro', ms:900000},
+    {n:24, t:'Concerto for Piano and Orchestra in D minor: II. Andante', ms:352000},
+    {n:25, t:'Concerto for Piano and Orchestra in D minor: III. Finale: Vivace', ms:739000},
+  ]},
+  { discNum: 24, tracks: [
+    {n:1, t:'Piano Concerto in A major: I. Moderato', ms:581493},
+    {n:2, t:'Piano Concerto in A major: IIa. Largo', ms:105466},
+    {n:3, t:'Piano Concerto in A major: IIb. Variation 1', ms:93266},
+    {n:4, t:'Piano Concerto in A major: IIc. Variation 2', ms:112506},
+    {n:5, t:'Piano Concerto in A major: IId. Variation 3 - Vivace - Tranquillo', ms:199466},
+    {n:6, t:'Piano Concerto in A major: IIe. Variation 4 - Lento', ms:278560},
+    {n:7, t:'Piano Concerto in A major: IIf. Variation 5 - Coda (Molto vivace)', ms:198906},
+    {n:8, t:'Ballada, op. 16', ms:557760},
+    {n:9, t:'Fantasia dramática: I. Allegro moderato -', ms:654400},
+    {n:10, t:'Fantasia dramática: II. Andante -', ms:465040},
+    {n:11, t:'Fantasia dramática: III. Animato - Maestoso', ms:614133},
+  ]},
+  { discNum: 25, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in A minor, op. 15: I. Maestoso - Allegro con fuoco', ms:648000},
+    {n:2, t:'Piano Concerto no. 1 in A minor, op. 15: II. Andante tranquillo', ms:480000},
+    {n:3, t:'Piano Concerto no. 1 in A minor, op. 15: III. Presto', ms:505000},
+    {n:4, t:'Second Modern Suite, op. 14: I. Praeludium - Andante maestoso', ms:204000},
+    {n:5, t:'Second Modern Suite, op. 14: II. Fugato', ms:130000},
+    {n:6, t:'Second Modern Suite, op. 14: III. Rhapsodie', ms:401000},
+    {n:7, t:'Second Modern Suite, op. 14: IV. Scherzino', ms:142000},
+    {n:8, t:'Second Modern Suite, op. 14: V. Marsch', ms:227000},
+    {n:9, t:'Second Modern Suite, op. 14: VI. Phantasie - Tanz', ms:285000},
+    {n:10, t:'Piano Concerto no. 2 in D minor, op. 23: I. Larghetto calmato - Poco passione', ms:750000},
+    {n:11, t:'Piano Concerto no. 2 in D minor, op. 23: II. Presto giocoso', ms:310000},
+    {n:12, t:'Piano Concerto no. 2 in D minor, op. 23: III. Largo - Molto allegro', ms:540000},
+  ]},
+  { discNum: 26, tracks: [
+    {n:1, t:'Concerto Symphonique no. 3 in E-flat major, op. 45 "National Hollandais": I. Maestoso', ms:660000},
+    {n:2, t:'Concerto Symphonique no. 3 in E-flat major, op. 45 "National Hollandais": II. Presto', ms:335000},
+    {n:3, t:'Concerto Symphonique no. 3 in E-flat major, op. 45 "National Hollandais": III. Andante', ms:394000},
+    {n:4, t:'Concerto Symphonique no. 3 in E-flat major, op. 45 "National Hollandais": IV. Allegro vivace', ms:458000},
+    {n:5, t:'Concerto Symphonique no. 5 in C minor, op. 123: I. Allegro maestoso', ms:886000},
+    {n:6, t:'Concerto Symphonique no. 5 in C minor, op. 123: II. Largo', ms:387000},
+    {n:7, t:'Concerto Symphonique no. 5 in C minor, op. 123: III. Intermède (Scherzo). Vivace', ms:286000},
+    {n:8, t:'Concerto Symphonique no. 5 in C minor, op. 123: IV. Allegro', ms:549000},
+  ]},
+  { discNum: 27, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in D major, op. 17: I. Andante - Allegro assai', ms:697280},
+    {n:2, t:'Piano Concerto no. 1 in D major, op. 17: II. Andante sostenuto quasi adagio', ms:480053},
+    {n:3, t:'Piano Concerto no. 1 in D major, op. 17: III. Allegro con fuoco', ms:385866},
+    {n:4, t:'Piano Concerto no. 2 in G minor, op. 22: I. Andante sostenuto', ms:608200},
+    {n:5, t:'Piano Concerto no. 2 in G minor, op. 22: II. Allegro scherzando', ms:323600},
+    {n:6, t:'Piano Concerto no. 2 in G minor, op. 22: III. Presto', ms:369333},
+    {n:7, t:'Piano Concerto no. 3 in E-flat major, op. 29: I. Moderato assai - Più mosso (Allegro maestoso)', ms:746640},
+    {n:8, t:'Piano Concerto no. 3 in E-flat major, op. 29: II. Andante', ms:376200},
+    {n:9, t:'Piano Concerto no. 3 in E-flat major, op. 29: III. Allegro non troppo', ms:426680},
+    {n:10, t:'Wedding Cake, op. 76', ms:358146},
+  ]},
+  { discNum: 28, tracks: [
+    {n:1, t:'Piano Concerto no. 4 in C minor, op. 44: I. Allegro moderato', ms:678520},
+    {n:2, t:'Piano Concerto no. 4 in C minor, op. 44: II. Allegro vivace', ms:804320},
+    {n:3, t:'Piano Concerto no. 5 in F major, op. 103: I. Allegro animato', ms:611280},
+    {n:4, t:'Piano Concerto no. 5 in F major, op. 103: II. Andante - Allegretto tranquillo quasi andantino - Andante', ms:667386},
+    {n:5, t:'Piano Concerto no. 5 in F major, op. 103: III. Molto allegro', ms:349333},
+    {n:6, t:'Rapsodie d\'Auvergne, op. 73', ms:542920},
+    {n:7, t:'Allegro appassionato, op. 70', ms:311080},
+    {n:8, t:'Africa, op. 89', ms:587160},
+  ]},
+  { discNum: 29, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in F-sharp minor, op. 3: I. Andante poco mosso - Allegro un poco maestoso', ms:895000},
+    {n:2, t:'Piano Concerto no. 1 in F-sharp minor, op. 3: II. Andante sostenuto e molto cantabile', ms:579000},
+    {n:3, t:'Piano Concerto no. 1 in F-sharp minor, op. 3: III. Allegro con fuoco - Presto - Più presto', ms:622000},
+    {n:4, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": I. Prologue. Andante con moto', ms:456000},
+    {n:5, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": II. Scherzo. Presto', ms:302000},
+    {n:6, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIIa. Tema. Maestoso e moderato molto', ms:63000},
+    {n:7, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIIb. Variation I. Molto sostenuto', ms:81000},
+    {n:8, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIIc. Variation II. Con espressione poco rubato', ms:67000},
+    {n:9, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIId. Variation III. Più mosso', ms:74000},
+    {n:10, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIIe. Variation IV. Allegretto', ms:54000},
+    {n:11, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIIf. Variation V. Molto vivace', ms:28000},
+    {n:12, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIIg. Variation VI. Con fuoco, agitato', ms:65000},
+    {n:13, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIIh. Variation VII. Con moto, energico', ms:85000},
+    {n:14, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIIi. Variation VIII. Andante sostenuto', ms:64000},
+    {n:15, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIIj. Variation IX. Andantino ben moderato', ms:138000},
+    {n:16, t:'Piano Concerto no. 2 in A-flat major, op. 32 "Prologue, Scherzo and Variations": IIIk. Variation X. Finale. Allegro molto', ms:495000},
+  ]},
+  { discNum: 30, tracks: [
+    {n:1, t:'Piano Concerto no. 2 in E-flat major, op. 56: I. Allegro moderato', ms:757640},
+    {n:2, t:'Piano Concerto no. 2 in E-flat major, op. 56: II. Adagio', ms:479053},
+    {n:3, t:'Piano Concerto no. 2 in E-flat major, op. 56: III. Allegretto. Tempo di polacca', ms:632146},
+    {n:4, t:'Piano Concerto no. 3 in G minor, op. 58: I. Allegro moderato', ms:911293},
+    {n:5, t:'Piano Concerto no. 3 in G minor, op. 58: II. Adagio', ms:311520},
+    {n:6, t:'Piano Concerto no. 3 in G minor, op. 58: III. Allegro agitato', ms:558333},
+    {n:7, t:'Anticipations of Scotland, op. 75 "A Grand Fantasia": I. Introduction. Adagio ma non troppo', ms:174053},
+    {n:8, t:'Anticipations of Scotland, op. 75 "A Grand Fantasia": II. Kelvin Grove. Andantino con moto', ms:222520},
+    {n:9, t:'Anticipations of Scotland, op. 75 "A Grand Fantasia": III. Auld Robin Gray. Adagio espressivo', ms:231120},
+    {n:10, t:'Anticipations of Scotland, op. 75 "A Grand Fantasia": IV. Lord Moira\'s Strathspey. Allegro moderato', ms:199240},
+    {n:11, t:'Anticipations of Scotland, op. 75 "A Grand Fantasia": V. Finale. Allegro vivace', ms:71080},
+  ]},
+  { discNum: 31, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in E-flat major, op. 4: Allegro con brio -', ms:413000},
+    {n:2, t:'Piano Concerto no. 1 in E-flat major, op. 4: Allegro non tanto -', ms:186000},
+    {n:3, t:'Piano Concerto no. 1 in E-flat major, op. 4: Allegro moderato e maestoso -', ms:294000},
+    {n:4, t:'Piano Concerto no. 1 in E-flat major, op. 4: Adagio non tanto -', ms:208000},
+    {n:5, t:'Piano Concerto no. 1 in E-flat major, op. 4: Allegro con brio', ms:240000},
+    {n:6, t:'Rhapsody on Ukranian Themes, op. 28: Andantino pastorale -', ms:419000},
+    {n:7, t:'Rhapsody on Ukranian Themes, op. 28: Allegretto scherzando -', ms:182000},
+    {n:8, t:'Rhapsody on Ukranian Themes, op. 28: Andantino pastorale -', ms:137000},
+    {n:9, t:'Rhapsody on Ukranian Themes, op. 28: Allegro giocoso', ms:284000},
+    {n:10, t:'Piano Concerto no. 2 in E major, op. 38: Lento ma non troppo -', ms:334000},
+    {n:11, t:'Piano Concerto no. 2 in E major, op. 38: Allegro molto ed appassionato -', ms:91000},
+    {n:12, t:'Piano Concerto no. 2 in E major, op. 38: Allegro moderato -', ms:156000},
+    {n:13, t:'Piano Concerto no. 2 in E major, op. 38: Allegro molto -', ms:202000},
+    {n:14, t:'Piano Concerto no. 2 in E major, op. 38: Lento ma non troppo -', ms:72000},
+    {n:15, t:'Piano Concerto no. 2 in E major, op. 38: Allegro molto', ms:305000},
+  ]},
+  { discNum: 32, tracks: [
+    {n:1, t:'Piano Concerto in B-flat minor, op. 27: I. Allegro maestoso ed energico', ms:1048960},
+    {n:2, t:'Piano Concerto in B-flat minor, op. 27: II. Andante sostenuto', ms:529106},
+    {n:3, t:'Piano Concerto in B-flat minor, op. 27: III. Allegro con fuoco ma non troppo', ms:610226},
+    {n:4, t:'Piano Concerto in B-flat major, op. 30: I.', ms:868640},
+    {n:5, t:'Piano Concerto in B-flat major, op. 30: II. Adagio con moto', ms:301026},
+    {n:6, t:'Piano Concerto in B-flat major, op. 30: III. Allegro vivace', ms:454466},
+  ]},
+  { discNum: 33, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in F major, op. 45: I. Allegro maestoso', ms:557973},
+    {n:2, t:'Piano Concerto no. 1 in F major, op. 45: II. Adagio', ms:393106},
+    {n:3, t:'Piano Concerto no. 1 in F major, op. 45: III. Rondo: Allegro vivace', ms:392760},
+    {n:4, t:'Piano Concerto no. 6 in B-flat major, op. 90 "Fantastique": I. Allegro con spirito -', ms:377000},
+    {n:5, t:'Piano Concerto no. 6 in B-flat major, op. 90 "Fantastique": II. Andante espressivo -', ms:324506},
+    {n:6, t:'Piano Concerto no. 6 in B-flat major, op. 90 "Fantastique": III. Allegro agitato -', ms:77293},
+    {n:7, t:'Piano Concerto no. 6 in B-flat major, op. 90 "Fantastique": IV. Vivace', ms:247400},
+    {n:8, t:'Piano Concerto no. 7 in C minor, op. 93 "Pathétique": I. []', ms:693800},
+    {n:9, t:'Piano Concerto no. 7 in C minor, op. 93 "Pathétique": II. Allegro agitato -', ms:226280},
+    {n:10, t:'Piano Concerto no. 7 in C minor, op. 93 "Pathétique": III. Allegro con brio', ms:416880},
+  ]},
+  { discNum: 34, tracks: [
+    {n:1, t:'Piano Concerto no. 2 in C minor, op. 56: I. Allegro', ms:1240013},
+    {n:2, t:'Piano Concerto no. 2 in C minor, op. 56: II. Adagio', ms:649760},
+    {n:3, t:'Piano Concerto no. 2 in C minor, op. 56: III. Allegro non troppo', ms:556760},
+    {n:4, t:'Piano Concerto no. 3 in C-sharp minor, op. 80: I. Maestoso', ms:953653},
+    {n:5, t:'Piano Concerto no. 3 in C-sharp minor, op. 80: II. Adagio', ms:560360},
+    {n:6, t:'Piano Concerto no. 3 in C-sharp minor, op. 80: III. Allegro non troppo', ms:769293},
+  ]},
+  { discNum: 35, tracks: [
+    {n:1, t:'Piano Concerto in C minor, op. 12: I. Allegro', ms:481746},
+    {n:2, t:'Piano Concerto in C minor, op. 12: II. Scherzando', ms:275000},
+    {n:3, t:'Piano Concerto in C minor, op. 12: III. Final', ms:424760},
+    {n:4, t:'Poëme symphonique in D minor, op. 37', ms:782453},
+    {n:5, t:'Fantaisie-Ballet in B-flat major, op. 6', ms:680546},
+    {n:6, t:'Scherzo-Caprice in D major, op. 25', ms:487494},
+  ]},
+  { discNum: 36, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in A major, op. 34: I. Allegro moderato', ms:746000},
+    {n:2, t:'Piano Concerto no. 1 in A major, op. 34: II. Larghetto', ms:299000},
+    {n:3, t:'Piano Concerto no. 1 in A major, op. 34: III. Allegro moderato', ms:501000},
+    {n:4, t:'Piano Concerto no. 7 in B minor, op. 207: I. Allegro moderato', ms:400000},
+    {n:5, t:'Piano Concerto no. 7 in B minor, op. 207: II. Romance. Larghetto senza tempo - Andantino cantabile', ms:303000},
+    {n:6, t:'Piano Concerto no. 7 in B minor, op. 207: III. Rondo espagnol. Allegretto', ms:367000},
+    {n:7, t:'Piano Concerto no. 8 in A-flat major, op. 218: I. Allegro molto moderato', ms:328000},
+    {n:8, t:'Piano Concerto no. 8 in A-flat major, op. 218: II. Andantino', ms:205000},
+    {n:9, t:'Piano Concerto no. 8 in A-flat major, op. 218: III. Polonaise', ms:321000},
+  ]},
+  { discNum: 37, tracks: [
+    {n:1, t:'Piano Concerto no. 4 in E major, op. 64: I. Allegro maestoso', ms:792093},
+    {n:2, t:'Piano Concerto no. 4 in E major, op. 64: II. Adagio', ms:293746},
+    {n:3, t:'Piano Concerto no. 4 in E major, op. 64: III. Rondo. Allegretto - Tempo di marcia', ms:476373},
+    {n:4, t:'Piano Concerto no. 5 in C major, op. 87: I. Allegro moderato', ms:817120},
+    {n:5, t:'Piano Concerto no. 5 in C major, op. 87: II. Adagio non troppo', ms:432320},
+    {n:6, t:'Piano Concerto no. 5 in C major, op. 87: III. Allegro vivace', ms:587186},
+    {n:7, t:'Recollections of Ireland, op. 69: I. Fantasia. Allegro moderato', ms:351000},
+    {n:8, t:'Recollections of Ireland, op. 69: II. The Groves of Blarney. Andante sostenuto espressivo', ms:224000},
+    {n:9, t:'Recollections of Ireland, op. 69: III. Garry Owen. Allegro', ms:134706},
+    {n:10, t:'Recollections of Ireland, op. 69: IV. St Patrick\'s Day', ms:213453},
+  ]},
+  { discNum: 38, tracks: [
+    {n:1, t:'Concerto symphonique in A minor, op. 27: I. Allegro energico —', ms:778000},
+    {n:2, t:'Concerto symphonique in A minor, op. 27: II. Larghetto —', ms:435000},
+    {n:3, t:'Concerto symphonique in A minor, op. 27: III. Allegro vivace', ms:659000},
+    {n:4, t:'Allegro de concert in A major, op. 7', ms:834000},
+    {n:5, t:'Fantaisie russe in B minor, op. 39', ms:739000},
+  ]},
+  { discNum: 39, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in B-flat minor, op. 32: I. Allegro patetico', ms:623000},
+    {n:2, t:'Piano Concerto no. 1 in B-flat minor, op. 32: II. Allegro assai', ms:431000},
+    {n:3, t:'Piano Concerto no. 1 in B-flat minor, op. 32: III. Allegro non tanto – Allegro patetico (Come prima)', ms:621000},
+    {n:4, t:'Piano Concerto no. 4 in D minor, op. 70: I. Moderato assai', ms:700000},
+    {n:5, t:'Piano Concerto no. 4 in D minor, op. 70: II. Andante', ms:638000},
+    {n:6, t:'Piano Concerto no. 4 in D minor, op. 70: III. Allegro', ms:538000},
+  ]},
+  { discNum: 40, tracks: [
+    {n:1, t:'Piano Concerto in C minor: I. Allegro ma non troppo', ms:658786},
+    {n:2, t:'Piano Concerto in C minor: II. Largo', ms:367266},
+    {n:3, t:'Piano Concerto in C minor: III. Maestoso con moto moderato', ms:698760},
+    {n:4, t:'Legend', ms:705213},
+    {n:5, t:'Piano Concerto in E-flat major: I. In tempo moderato', ms:527360},
+    {n:6, t:'Piano Concerto in E-flat major: II. Lento espressivo - Allegro - Cadenza -', ms:432666},
+    {n:7, t:'Piano Concerto in E-flat major: III. Allegretto giocoso', ms:471960},
+  ]},
+  { discNum: 41, tracks: [
+    {n:1, t:'Piano Concerto no. 3 in D minor, op. 87: I. Allegro moderato', ms:899000},
+    {n:2, t:'Piano Concerto no. 3 in D minor, op. 87: II. Andantino sostenuto', ms:383000},
+    {n:3, t:'Piano Concerto no. 3 in D minor, op. 87: III. Finale. Allegro (con fuoco ed appassionato)', ms:529000},
+    {n:4, t:'Piano Concerto no. 4 in E major, op. 131: I. Allegro moderato', ms:560000},
+    {n:5, t:'Piano Concerto no. 4 in E major, op. 131: II. Andante cantabile', ms:329000},
+    {n:6, t:'Piano Concerto no. 4 in E major, op. 131: III. Rondo russe. Allegro vivace', ms:470000},
+    {n:7, t:'Piano Concerto no. 5 in F minor, op. 180: I. Allegro moderato', ms:349000},
+    {n:8, t:'Piano Concerto no. 5 in F minor, op. 180: II. Andantino', ms:274000},
+    {n:9, t:'Piano Concerto no. 5 in F minor, op. 180: III. Finale. Allegro agitato', ms:328000},
+  ]},
+  { discNum: 42, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in D minor, op. 61: I. Allegro maestoso', ms:881000},
+    {n:2, t:'Piano Concerto no. 1 in D minor, op. 61: II. Adagio di molto', ms:431000},
+    {n:3, t:'Piano Concerto no. 1 in D minor, op. 61: III. Rondo: Vivace', ms:537000},
+    {n:4, t:'Piano Concerto no. 4 in A-flat major, op. 127: I. Maestoso brillante', ms:823000},
+    {n:5, t:'Piano Concerto no. 4 in A-flat major, op. 127: II. Adagio', ms:363000},
+    {n:6, t:'Piano Concerto no. 4 in A-flat major, op. 127: III. Rondo: Allegro non troppo', ms:512000},
+  ]},
+  { discNum: 43, tracks: [
+    {n:1, t:'Piano Concerto in D major, op. 27: I. Allegro moderato', ms:772933},
+    {n:2, t:'Piano Concerto in D major, op. 27: II. Lento', ms:527053},
+    {n:3, t:'Piano Concerto in D major, op. 27: III. Allegro assai (Tempo di valse)', ms:591653},
+    {n:4, t:'Piano Concerto in D-flat major, op. 6: I. Allegro non troppo', ms:769493},
+    {n:5, t:'Piano Concerto in D-flat major, op. 6: II. Andante', ms:600200},
+    {n:6, t:'Piano Concerto in D-flat major, op. 6: III. Allegro non assai', ms:648920},
+  ]},
+  { discNum: 44, tracks: [
+    {n:1, t:'Piano Concerto no. 4 in F minor, op. 19: I. Allegro con maesta', ms:706000},
+    {n:2, t:'Piano Concerto no. 4 in F minor, op. 19: II. Barcarole. Andante cantabile e con moto', ms:475000},
+    {n:3, t:'Piano Concerto no. 4 in F minor, op. 19: III. Presto. Agitato', ms:462000},
+    {n:4, t:'Piano Concerto in E major, op. 18: I. Allegro non troppo', ms:647000},
+    {n:5, t:'Piano Concerto in E major, op. 18: II. Andante', ms:355000},
+    {n:6, t:'Piano Concerto in E major, op. 18: III. Allegro non assai', ms:478000},
+    {n:7, t:'Caprice in E major, op. 22', ms:769000},
+  ]},
+  { discNum: 45, tracks: [
+    {n:1, t:'Piano Concerto no. 2 in F minor, op. 21: I. Maestoso', ms:858466},
+    {n:2, t:'Piano Concerto no. 2 in F minor, op. 21: II. Larghetto', ms:542960},
+    {n:3, t:'Piano Concerto no. 2 in F minor, op. 21: III. Allegro vivace', ms:506106},
+    {n:4, t:'Piano Concerto no. 1 in E minor, op. 11: I. Allegro maestoso', ms:1236293},
+    {n:5, t:'Piano Concerto no. 1 in E minor, op. 11: II. Romance. Larghetto', ms:623440},
+    {n:6, t:'Piano Concerto no. 1 in E minor, op. 11: III. Rondo. Vivace', ms:597760},
+  ]},
+  { discNum: 46, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in B-flat minor, op. 23: I. Allegro non troppo e molto maestoso - Allegro con spirito - Cadenza - Tempo 1', ms:1307106},
+    {n:2, t:'Piano Concerto no. 1 in B-flat minor, op. 23: II. Andantino simplice - Prestissimo - Tempo 1', ms:452666},
+    {n:3, t:'Piano Concerto no. 1 in B-flat minor, op. 23: III. Allegro con fuoco - Molto meno mosso - Allegro vivo', ms:420626},
+    {n:4, t:'Piano Concerto in F-sharp minor, op. 20: I. Allegro', ms:477666},
+    {n:5, t:'Piano Concerto in F-sharp minor, op. 20: II. Andante - Allegro scherzando - Adagio - Allegretto - Tempo 1', ms:607933},
+    {n:6, t:'Piano Concerto in F-sharp minor, op. 20: III. Allegro moderato', ms:650906},
+  ]},
+  { discNum: 47, tracks: [
+    {n:1, t:'Variations in B-flat major on "Là ci darem la mano" from Mozart\'s Don Giovanni, op. 2: Introduction. Largo – Poco più mosso', ms:313000},
+    {n:2, t:'Variations in B-flat major on "Là ci darem la mano" from Mozart\'s Don Giovanni, op. 2: Theme. Allegretto', ms:89000},
+    {n:3, t:'Variations in B-flat major on "Là ci darem la mano" from Mozart\'s Don Giovanni, op. 2: Variation I. Brillante', ms:66000},
+    {n:4, t:'Variations in B-flat major on "Là ci darem la mano" from Mozart\'s Don Giovanni, op. 2: Variation II. Veloce ma accuratamente', ms:63000},
+    {n:5, t:'Variations in B-flat major on "Là ci darem la mano" from Mozart\'s Don Giovanni, op. 2: Variation III', ms:88000},
+    {n:6, t:'Variations in B-flat major on "Là ci darem la mano" from Mozart\'s Don Giovanni, op. 2: Variation IV', ms:76000},
+    {n:7, t:'Variations in B-flat major on "Là ci darem la mano" from Mozart\'s Don Giovanni, op. 2: Variation V. Adagio - Alla Polacca', ms:430000},
+    {n:8, t:'Fantasy on Polish Airs, op. 13', ms:899000},
+    {n:9, t:'Rondo à la krakowiak, op. 14', ms:864000},
+    {n:10, t:'Andante spianato and Grande Polonaise, op. 22: Andante spianato', ms:279000},
+    {n:11, t:'Andante spianato and Grande Polonaise, op. 22: Grande Polonaise', ms:570000},
+  ]},
+  { discNum: 48, tracks: [
+    {n:1, t:'Piano Concerto no. 2 in B-flat major, op. 83: I. Allegro ma non troppo', ms:1024000},
+    {n:2, t:'Piano Concerto no. 2 in B-flat major, op. 83: II. Allegro appassionato', ms:524000},
+    {n:3, t:'Piano Concerto no. 2 in B-flat major, op. 83: III. Andante', ms:687000},
+    {n:4, t:'Piano Concerto no. 2 in B-flat major, op. 83: IV. Allegretto grazioso', ms:527000},
+    {n:5, t:'Four Piano Pieces, op. 119: I. Intermezzo: Adagio', ms:262000},
+    {n:6, t:'Four Piano Pieces, op. 119: II. Intermezzo: Andantino un poco agitato', ms:275000},
+    {n:7, t:'Four Piano Pieces, op. 119: III. Intermezzo: Grazioso e giocoso', ms:85000},
+    {n:8, t:'Four Piano Pieces, op. 119: IV. Rhapsodie: Allegro risoluto', ms:300000},
+  ]},
+  { discNum: 49, tracks: [
+    {n:1, t:'Piano Concerto no. 1 in F-sharp minor, op. 1: I. Vivace', ms:752946},
+    {n:2, t:'Piano Concerto no. 1 in F-sharp minor, op. 1: II. Andante', ms:339640},
+    {n:3, t:'Piano Concerto no. 1 in F-sharp minor, op. 1: III. Allegro vivace', ms:477626},
+    {n:4, t:'Piano Concerto no. 4 in G minor, op. 40: I. Allegro vivace', ms:546946},
+    {n:5, t:'Piano Concerto no. 4 in G minor, op. 40: II. Largo', ms:382093},
+    {n:6, t:'Piano Concerto no. 4 in G minor, op. 40: III. Allegro vivace', ms:556440},
+    {n:7, t:'Rhapsody on a Theme of Paganini, op. 43: Introduction. Allegro vivace', ms:9026},
+    {n:8, t:'Rhapsody on a Theme of Paganini, op. 43: I. Variation I. Predecente', ms:19026},
+    {n:9, t:'Rhapsody on a Theme of Paganini, op. 43: Theme L\'istesso tempo', ms:18040},
+    {n:10, t:'Rhapsody on a Theme of Paganini, op. 43: Variation II. L\'istesso tempo', ms:17506},
+    {n:11, t:'Rhapsody on a Theme of Paganini, op. 43: Variation III. L\'istesso tempo', ms:23720},
+    {n:12, t:'Rhapsody on a Theme of Paganini, op. 43: Variation IV. Più vivo', ms:27440},
+    {n:13, t:'Rhapsody on a Theme of Paganini, op. 43: Variation V. Tempo precedente', ms:27693},
+    {n:14, t:'Rhapsody on a Theme of Paganini, op. 43: Variation VI. L\'istesso tempo', ms:65533},
+    {n:15, t:'Rhapsody on a Theme of Paganini, op. 43: Variation VII. Menumosso, a tempo moderato', ms:65893},
+    {n:16, t:'Rhapsody on a Theme of Paganini, op. 43: Variation VIII. Tempo I', ms:32173},
+    {n:17, t:'Rhapsody on a Theme of Paganini, op. 43: Variation IX. L\'istesso tempo', ms:30133},
+    {n:18, t:'Rhapsody on a Theme of Paganini, op. 43: Variation X. Poco marcato', ms:48693},
+    {n:19, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XI. Moderato', ms:86786},
+    {n:20, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XII. Tempo di minuetto', ms:83706},
+    {n:21, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XIII. Allegro', ms:27933},
+    {n:22, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XIV. L\'istesso tempo', ms:42520},
+    {n:23, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XV. Più vivo scherzando', ms:69306},
+    {n:24, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XVI. Allegretto', ms:100186},
+    {n:25, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XVII. (Allegretto)', ms:132706},
+    {n:26, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XVIII. Andante cantabile', ms:177240},
+    {n:27, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XIX. A tempo vivace', ms:26960},
+    {n:28, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XX. Un poco più vivo', ms:34426},
+    {n:29, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XXI. Un poco più vivo', ms:25493},
+    {n:30, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XXII. Un poco più vivo (Alla breve)', ms:97266},
+    {n:31, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XXIII. L\'istesso tempo', ms:50760},
+    {n:32, t:'Rhapsody on a Theme of Paganini, op. 43: Variation XXIV. A tempo un poco meno mosso', ms:83693},
+  ]},
+  { discNum: 50, tracks: [
+    {n:1, t:'Piano Concerto no. 2 in C minor, op. 18: I. Moderato', ms:599160},
+    {n:2, t:'Piano Concerto no. 2 in C minor, op. 18: II. Adagio sostenuto', ms:662586},
+    {n:3, t:'Piano Concerto no. 2 in C minor, op. 18: III. Allegro scherzando', ms:693133},
+    {n:4, t:'Piano Concerto no. 3 in D minor, op. 30: I. Allegro ma non tanto', ms:905093},
+    {n:5, t:'Piano Concerto no. 3 in D minor, op. 30: II. Intermezzo. Adagio', ms:595893},
+    {n:6, t:'Piano Concerto no. 3 in D minor, op. 30: III. Finale. Alla breve', ms:801413},
+  ]},
+];
+
+const HYPERION = {
+  id: 'hyperion',
+  title: 'The Hyperion Romantic Piano Concerto Edition',
+  artist: 'Various Artists',
+  label: 'Hyperion',
+  year: 2026,
+  emoji: '🎹',
+  colorClass: 'hyperion',
+  art: 'https://soundslikevinyl.com/cdn/shop/files/0034571147017_1024x1024.jpg?v=1772406299',
+  works: [
+    { title: 'Paderewski: Piano Concerto in A minor, op. 17 / Moszkowski: Piano Concerto in E major, op. 59', composer: 'Moszkowski / Paderewski', artist: 'Piers Lane', origYear: null, discNums: [1], art: 'https://coverartarchive.org/release/baed2d8c-96a7-41b4-b9ac-8f7a76d82bee/43265477291-500.jpg', discs: [HYPERION_DISCS[0]] },
+    { title: 'Medtner: Piano Concerto no. 2 in C minor / Piano Concerto no. 3 in E minor', composer: 'Medtner', artist: 'Nikolai Demidenko', origYear: null, discNums: [2], art: 'https://coverartarchive.org/release/68f21c30-a9e7-4eff-b5cd-df2df6ef683c/6058366069-500.jpg', discs: [HYPERION_DISCS[1]] },
+    { title: 'Mendelssohn: The Concertos for 2 Pianos', composer: 'Mendelssohn', artist: 'Ian Munro', origYear: null, discNums: [3], art: 'https://coverartarchive.org/release/d3e7a305-03dc-4cb8-b889-0484f26c188c/6058489458.png', discs: [HYPERION_DISCS[2]] },
+    { title: 'Arensky: Piano Concerto in F minor, op. 2 / Fantasia on Russian Folksongs, op. 48 / Bortkiewicz: Piano Concerto no. 1, op. 16', composer: 'Arensky / Bortkiewicz', artist: 'Stephen Coombs', origYear: null, discNums: [4], art: 'https://coverartarchive.org/release/57904173-c2f9-4ef7-9bcc-ee35da96828a/6062328825-500.jpg', discs: [HYPERION_DISCS[3]] },
+    { title: 'Balakirev: Piano Concerto no. 1 in F-sharp minor / Piano Concerto no. 2 in E-flat major / Rimsky-Korsakov: Piano Concerto in C-sharp minor', composer: 'Balakirev / Rimsky-Korsakov', artist: 'Malcolm Binns', origYear: null, discNums: [5], art: 'https://coverartarchive.org/release/6a41e586-454d-45ca-a1f8-2e47ec47e51d/6066988035-500.jpg', discs: [HYPERION_DISCS[4]] },
+    { title: 'Dohnányi: Piano Concerto no. 1 in E minor / Piano Concerto no. 2 in B minor', composer: 'Dohnányi', artist: 'Martin Roscoe', origYear: null, discNums: [6], art: 'https://coverartarchive.org/release/966247a6-a378-4931-bdba-539e84342f4d/6066712066.png', discs: [HYPERION_DISCS[5]] },
+    { title: 'Henselt: Piano Concerto, op. 16 / Variations de concert, op. 11 / Alkan: Concerto da camera, op. 10/1 / Concerto da camera, op. 10/2', composer: 'Henselt / Alkan', artist: 'Marc‐André Hamelin', origYear: null, discNums: [7], art: 'https://coverartarchive.org/release/84eb2eba-46b3-4029-af1c-f0849ca81dc5/6070989044-500.jpg', discs: [HYPERION_DISCS[6]] },
+    { title: 'Medtner: Piano Concerto no. 1 in C minor / Piano Quintet in C major', composer: 'Medtner', artist: 'Дмитрий Алексеев', origYear: null, discNums: [8], art: 'https://coverartarchive.org/release/4ecef594-1885-4639-a09b-1c9962a38d27/6071421247-500.jpg', discs: [HYPERION_DISCS[7]] },
+    { title: 'Eugen d’Albert: Piano Concerto no. 1 in B minor / Piano Concerto no. 2 in E major', composer: 'Eugen d\'Albert', artist: 'Piers Lane', origYear: null, discNums: [9], art: 'https://coverartarchive.org/release/143c9855-e646-4ae1-bbd8-77f065695f16/6133688168.png', discs: [HYPERION_DISCS[8]] },
+    { title: 'Weber: Piano Concerto no. 1 in C major / Piano Concerto no. 2 in E-flat major / Konzertstück in F minor', composer: 'Weber', artist: 'Nikolai Demidenko', origYear: null, discNums: [10], art: 'https://coverartarchive.org/release/068663ac-46d9-487e-9ae5-62298ddacfcf/6123292875.png', discs: [HYPERION_DISCS[9]] },
+    { title: 'Scharwenka: Piano Concerto no. 4 in F minor / Sauer: Piano Concerto no. 1 in E minor', composer: 'Scharwenka / Sauer', artist: 'Stephen Hough', origYear: null, discNums: [11], art: 'https://coverartarchive.org/release/1c476313-112f-4fad-8026-8bcdc6c97d68/6134488701.jpg', discs: [HYPERION_DISCS[10]] },
+    { title: 'Parry: Piano Concerto in F-sharp major / Stanford: Piano Concerto no. 1 in G major', composer: 'Parry / Stanford', artist: 'Piers Lane', origYear: null, discNums: [12], art: 'https://coverartarchive.org/release/205279ac-400a-464d-aacb-5a9b34915247/6134446531.png', discs: [HYPERION_DISCS[11]] },
+    { title: 'Glazunov: Piano Concerto no. 1 in F minor / Piano Concerto no. 2 in B major / Goedicke: Concertstück, op. 11', composer: 'Glazunov / Goedicke', artist: 'Stephen Coombs', origYear: null, discNums: [13], art: 'https://coverartarchive.org/release/e268d062-f2ab-4ec9-948b-a8123b7d31f0/6140446217.png', discs: [HYPERION_DISCS[12]] },
+    { title: 'Litolff: Concerto Symphonique no. 2 in B minor / Concerto Symphonique no. 4 in D minor', composer: 'Litolff', artist: 'Peter Donohoe', origYear: null, discNums: [14], art: 'https://coverartarchive.org/release/8d158174-a631-4097-af9a-33dda6ed25ca/6135312138.png', discs: [HYPERION_DISCS[13]] },
+    { title: 'Hahn: Piano Concerto in E major / Massenet: Piano Concerto in E‐flat major', composer: 'Hahn / Massenet', artist: 'Stephen Coombs', origYear: null, discNums: [15], art: 'https://coverartarchive.org/release/dfc793b7-5425-4b38-9f20-b71aabfe2c48/6140452035-500.jpg', discs: [HYPERION_DISCS[14]] },
+    { title: 'Huss: Piano Concerto in B major, op. 10 / Schelling: Suite fantastique, op. 7', composer: 'Huss / Schelling', artist: 'Ian Hobson', origYear: null, discNums: [16], art: 'https://coverartarchive.org/release/7365f1f4-05e6-45c2-aea0-2e013abd7a3d/6218013776.png', discs: [HYPERION_DISCS[15]] },
+    { title: 'Mendelssohn: Piano Concerto no. 1 in G minor / Piano Concerto no. 2 in D minor / Capriccio Brilliant, op. 22 / Rondo Brilliant, op. 29 / Serenade and Allegro giocoso, op. 43', composer: 'Mendelssohn', artist: 'Lawrence Foster', origYear: null, discNums: [17], art: 'https://coverartarchive.org/release/30e4347b-9653-4197-83bd-6a611e818ad2/6212368059.png', discs: [HYPERION_DISCS[16]] },
+    { title: 'Korngold: Piano Concerto in C-sharp for the Left Hand, op. 17 / Marx: Romantisches Klavierkonzert', composer: 'Korngold / Marx', artist: 'Marc‐André Hamelin', origYear: null, discNums: [18], art: 'https://coverartarchive.org/release/f37f783f-08d5-4ecd-9598-b0b963108b59/6217868137-500.jpg', discs: [HYPERION_DISCS[17]] },
+    { title: 'Mackenzie: Scottish Concerto, op. 55 / Tovey: Piano Concerto in A major, op. 15', composer: 'Mackenzie / Tovey', artist: 'Steven Osborne', origYear: null, discNums: [19], art: 'https://coverartarchive.org/release/5bbcd7a8-2647-490a-84fa-e28a628dacff/6217581642.png', discs: [HYPERION_DISCS[18]] },
+    { title: 'Brüll: Piano Concerto no. 1, op. 10 / Piano Concerto no. 2, op. 24 / Andante and Allegro, op. 88', composer: 'Brüll', artist: 'Martin Roscoe', origYear: null, discNums: [20], art: 'https://coverartarchive.org/release/0350db2b-5622-4179-8fda-35156e0b03b7/6204939064.png', discs: [HYPERION_DISCS[19]] },
+    { title: 'Kullak: Piano Concerto in C minor, op. 55 / Dreyschock: Piano Concerto in D minor, op. 137', composer: 'Kullak / Dreyschock', artist: 'Piers Lane', origYear: null, discNums: [21], art: 'https://coverartarchive.org/release/ee0f8178-31b3-412b-88ed-23597b4bbf50/6236291518.png', discs: [HYPERION_DISCS[20]] },
+    { title: 'Busoni: Piano Concerto, op. XXXIX', composer: 'Busoni', artist: 'Marc‐André Hamelin', origYear: null, discNums: [22], art: 'https://coverartarchive.org/release/d1883776-69dc-4520-aba5-75da9b3974f3/6235978634-500.jpg', discs: [HYPERION_DISCS[21]] },
+    { title: 'Holbrooke: Piano Concerto no. 1 "The Song of Gwin ap Nudd" / Wood: Piano Concerto in D minor', composer: 'Holbrooke / Wood', artist: 'Hamish Milne', origYear: null, discNums: [23], art: 'https://coverartarchive.org/release/9df66632-35ae-46c6-87e6-053ace4517be/6235831654.png', discs: [HYPERION_DISCS[22]] },
+    { title: 'José Vianna da Motta: Piano Concerto in A major / Fantasia dramática / Ballade, op. 16', composer: 'Vianna da Motta', artist: 'Artur Pizarro', origYear: null, discNums: [24], art: 'https://coverartarchive.org/release/2e28bcfa-3480-44e5-8852-e5d497a36503/6235632986.png', discs: [HYPERION_DISCS[23]] },
+    { title: 'MacDowell: Piano Concerto no. 1 in A minor / Piano Concerto no. 2 in D minor / Second Modern Suite, op. 14', composer: 'MacDowell', artist: 'Seta Tanyel', origYear: null, discNums: [25], art: 'https://coverartarchive.org/release/2f4fe2d2-bc0b-45d0-9797-4f102aa47b6d/6235061891.png', discs: [HYPERION_DISCS[24]] },
+    { title: 'Litolff: Concerto Symphonique no. 3 in E-flat major / Concerto Symphonique no. 5 in C minor', composer: 'Litolff', artist: 'Peter Donohoe', origYear: null, discNums: [26], art: 'https://coverartarchive.org/release/f6f79dc3-edfd-457e-a24b-6763e27a24be/6231981015.png', discs: [HYPERION_DISCS[25]] },
+    { title: 'Saint‐Saëns: The Complete Works for Piano and Orchestra', composer: 'Saint-Saëns', artist: 'Stephen Hough', origYear: null, discNums: [27, 28], art: 'https://coverartarchive.org/release/405dc82b-e935-3ff1-a401-f683411c9be5/3882182429.jpg', discs: [HYPERION_DISCS[26], HYPERION_DISCS[27]] },
+    { title: 'Stojowski: Piano Concerto no. 1, op. 3 / Piano Concerto no. 2, op. 32', composer: 'Stojowski', artist: 'Jonathan Plowright', origYear: null, discNums: [29], art: 'https://coverartarchive.org/release/fa539217-ae1b-48d4-b99c-763d2b148680/6231512789.png', discs: [HYPERION_DISCS[28]] },
+    { title: 'Moscheles: Piano Concerto no. 2 in E-flat major / Piano Concerto no. 3 in G minor / Anticipations of Scotland, op. 75', composer: 'Moscheles', artist: 'Howard Shelley', origYear: null, discNums: [30], art: 'https://coverartarchive.org/release/77df81cc-d46f-43b9-8a38-db79a8dbc949/6231417462.png', discs: [HYPERION_DISCS[29]] },
+    { title: 'Lyapunov: Piano Concerto no. 1, op. 4 / Piano Concerto no. 2, op. 38 / Rhapsody on Ukranian Themes, op. 28', composer: 'Lyapunov', artist: 'Hamish Milne', origYear: null, discNums: [31], art: 'https://coverartarchive.org/release/0bfb0288-2929-43ea-9181-48b62bc0692f/6229894808-500.jpg', discs: [HYPERION_DISCS[30]] },
+    { title: 'Fuchs: Piano Concerto in B-flat, op. 27 / Kiel: Piano Concerto in B-flat, op. 30', composer: 'Fuchs / Kiel', artist: 'Martin Roscoe', origYear: null, discNums: [32], art: 'https://coverartarchive.org/release/82329a0a-9b25-40de-af94-a2b6724e489c/6247570906.png', discs: [HYPERION_DISCS[31]] },
+    { title: 'Moscheles: Piano Concerto no. 1, op. 45 / Piano Concerto no. 6, op. 90 / Piano Concerto no. 7, op. 93', composer: 'Moscheles', artist: 'Howard Shelley', origYear: null, discNums: [33], art: 'https://coverartarchive.org/release/a22dcabe-b1ad-4525-af09-b94a8f9231fe/6246395373.png', discs: [HYPERION_DISCS[32]] },
+    { title: 'Scharwenka: Piano Concerto no. 2, op. 56 / Piano Concerto no. 3, op. 80', composer: 'Scharwenka', artist: 'Seta Tanyel', origYear: null, discNums: [34], art: 'https://coverartarchive.org/release/82329a0a-9b25-40de-af94-a2b6724e489c/6247570906.png', discs: [HYPERION_DISCS[33]] },
+    { title: 'Pierné: The Complete Works for Piano and Orchestra', composer: 'Pierné', artist: 'Stephen Coombs', origYear: null, discNums: [35], art: 'https://coverartarchive.org/release/79ed61d9-d8c1-4f68-8518-513f1f6aa705/6246647120.png', discs: [HYPERION_DISCS[34]] },
+    { title: 'Henri Herz: Piano Concerto no. 1, op. 34 / Piano Concerto no. 7, op. 207 / Piano Concerto no. 8, op. 218', composer: 'Henri Herz', artist: 'Howard Shelley', origYear: null, discNums: [36], art: 'https://coverartarchive.org/release/4cec0be9-06a0-401a-a9e1-cefb95dd154f/6244199765.png', discs: [HYPERION_DISCS[35]] },
+    { title: 'Moscheles: Piano Concerto no. 4 in E major / Piano Concerto no. 5 in C major / Recollections of Ireland, op. 69', composer: 'Moscheles', artist: 'Howard Shelley', origYear: null, discNums: [37], art: 'https://coverartarchive.org/release/7e5886fd-16bb-41c8-b2f8-6d118cff8e46/6246181698.png', discs: [HYPERION_DISCS[36]] },
+    { title: 'Nápravník: Concerto symphonique, op. 27 / Fantaisie russe, op. 39 / Blumenfeld: Allegro de concert, op. 7', composer: 'Nápravník / Blumenfeld', artist: 'Evgeny Soifertis', origYear: null, discNums: [38], art: 'https://coverartarchive.org/release/a0e8c215-664b-4a18-a9bf-1afc02657bc9/6245413691.png', discs: [HYPERION_DISCS[37]] },
+    { title: 'Rubinstein: Piano Concerto no. 4 in D minor / Scharwenka: Piano Concerto no. 1 in B-flat minor', composer: 'Rubinstein / Scharwenka', artist: 'Marc‐André Hamelin', origYear: null, discNums: [39], art: 'https://coverartarchive.org/release/e81a9ca6-4925-466a-b31b-ce8647b90fad/5388034497-500.jpg', discs: [HYPERION_DISCS[38]] },
+    { title: 'Delius: Piano Concerto in C minor / Ireland: Piano Concerto in E-flat major / Legend', composer: 'Delius / Ireland', artist: 'Piers Lane', origYear: null, discNums: [40], art: 'https://coverartarchive.org/release/64023be9-1a00-456d-a5f7-d0ac3478e9c3/6244409671-500.jpg', discs: [HYPERION_DISCS[39]] },
+    { title: 'Henri Herz: Piano Concerto no. 3, op. 87 / Piano Concerto no. 4, op. 131 / Piano Concerto no. 5, op. 180', composer: 'Henri Herz', artist: 'Howard Shelley', origYear: null, discNums: [41], art: 'https://coverartarchive.org/release/0baf7a01-9c4a-442f-b73f-04567c5b0ef5/6244152209.png', discs: [HYPERION_DISCS[40]] },
+    { title: 'Kalkbrenner: Piano Concerto no. 1, op. 61 / Piano Concerto no. 4, op. 127', composer: 'Kalkbrenner', artist: 'Howard Shelley', origYear: null, discNums: [42], art: 'https://coverartarchive.org/release/f2539c7d-f88f-3cb7-8bab-67b980c20e9d/6257216366.png', discs: [HYPERION_DISCS[41]] },
+    { title: 'Alnæs: Piano Concerto in D major, op. 27 / Sinding: Piano Concerto in D-flat major, op. 6', composer: 'Alnæs / Sinding', artist: 'Piers Lane', origYear: null, discNums: [43], art: 'https://coverartarchive.org/release/123e0bb6-157d-473a-af6e-ba2b565bcafd/6257138516.png', discs: [HYPERION_DISCS[42]] },
+    { title: 'Sterndale Bennett: Piano Concerto no. 4, op. 19 / Caprice in E major, op. 22 / Bache: Piano Concerto in E major, op. 18', composer: 'Sterndale Bennett / Bache', artist: 'Howard Shelley', origYear: null, discNums: [44], art: 'https://coverartarchive.org/release/42bd7ef7-3038-4f92-82c3-7b4cd9cd249b/6257000589.png', discs: [HYPERION_DISCS[43]] },
+    { title: 'Chopin: Piano Concertos', composer: 'Chopin', artist: 'Nikolai Demidenko', origYear: null, discNums: [45], art: 'https://coverartarchive.org/release/23dcd903-520f-44e5-b9c8-303cbb8b73cf/6256463690.png', discs: [HYPERION_DISCS[44]] },
+    { title: 'Tchaikovsky: Piano Concerto No. 1 / Scriabin: Piano Concerto', composer: 'Tchaikovsky / Scriabin', artist: 'Nikolai Demidenko', origYear: null, discNums: [46], art: 'https://coverartarchive.org/release/4195098e-b797-44c0-928c-c7e08e556025/6253713396.png', discs: [HYPERION_DISCS[45]] },
+    { title: 'Chopin: Orchestral Works', composer: 'Chopin', artist: 'Garrick Ohlsson', origYear: null, discNums: [47], art: 'https://coverartarchive.org/release/0cd864f6-174c-4d7e-8646-6acdaf99f255/6253720265.png', discs: [HYPERION_DISCS[46]] },
+    { title: 'Brahms: Piano Concerto no. 2, op. 83 / Four Piano Pieces, op. 119', composer: 'Brahms', artist: 'Marc‐André Hamelin', origYear: null, discNums: [48], art: 'https://coverartarchive.org/release/1f436ef9-ffca-4315-8cb3-5520c581a7ec/6253720911.png', discs: [HYPERION_DISCS[47]] },
+    { title: 'Rachmaninov: The Piano Concertos / Paganini Rhapsody (1)', composer: 'Rachmaninov', artist: 'Stephen Hough', origYear: null, discNums: [49], art: 'https://coverartarchive.org/release/1bfff5d9-3255-4bd0-827d-c2f9614fa3cf/6253719302.png', discs: [HYPERION_DISCS[48]] },
+    { title: 'Rachmaninov: The Piano Concertos / Paganini Rhapsody (2)', composer: 'Rachmaninov', artist: 'Stephen Hough', origYear: null, discNums: [50], art: 'https://coverartarchive.org/release/ff78b7ec-f4ea-4bac-aa2c-dc888cb38963/6248136849.png', discs: [HYPERION_DISCS[49]] },
+  ],
+};
+
+const BOXSETS = { beatles: BEATLES, gd: GD, md: MD, tim: TIM, hyperion: HYPERION };
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+
+let queue = [];
+let currentBoxSet = null;
+let currentWorkIdx = null; // index into bs.works
+let entryMode = null; // 'standalone' | 'boxset'
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+}
+
+function setBreadcrumb(crumbs) {
+  const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = crumbs.map((c, i) => {
+    const isLast = i === crumbs.length - 1;
+    if (isLast) return `<span class="current">${c.label}</span>`;
+    return `<span onclick="${c.action}">${c.label}</span><span class="sep">/</span>`;
+  }).join('');
+}
+
+function showLibrary() {
+  currentBoxSet = null;
+  currentWorkIdx = null;
+  entryMode = null;
+  showView('library');
+  setBreadcrumb([{label: 'Library'}]);
+}
+
+function showBoxSet(bsId) {
+  const bs = BOXSETS[bsId];
+  currentBoxSet = bsId;
+  currentWorkIdx = null;
+  entryMode = null;
+
+  const totalDiscs = bs.works.reduce((n, w) => n + w.discs.length, 0);
+
+  const artEl = bs.art
+    ? `<img src="${bs.art}" alt="${bs.title}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'art-placeholder',style:'width:100%;height:100%'}))">`
+    : bs.emoji;
+
+  let html = `
+    <div class="boxset-view-header">
+      <div class="boxset-view-art ${bs.colorClass}">${artEl}</div>
+      <div class="boxset-view-info">
+        <h1>${bs.title}</h1>
+        <div class="artist">${bs.artist}</div>
+        <div class="meta">
+          <span>${totalDiscs} CDs</span>
+          <span>${bs.label}</span>
+          <span>${bs.year}</span>
+        </div>
+      </div>
+    </div>
+    <div class="work-grid">`;
+
+  bs.works.forEach((work, i) => {
+    const allTracks = work.discs.flatMap(d => d.tracks);
+    const runtime = allTracks.reduce((a, t) => a + t.ms, 0);
+    const multiDisc = work.discs.length > 1;
+    const discLabel = multiDisc
+      ? `Discs ${work.discNums[0]}–${work.discNums[work.discNums.length - 1]}`
+      : `Disc ${work.discNums[0]}`;
+    const workArt = work.art
+      ? `<img src="${work.art}" alt="${work.title}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'art-placeholder'}))">`
+      : `<div class="art-placeholder"></div>`;
+
+    const playOverlay = `<div class="play-overlay" onclick="event.stopPropagation();showWork('${bsId}',${i},'boxset');playWork()"><button class="play-overlay-btn">▶</button></div>`;
+
+    html += `
+      <div class="work-card" onclick="showWork('${bsId}', ${i}, 'boxset')">
+        <div class="work-card-art">${workArt}${playOverlay}</div>
+        <div class="work-card-body">
+          <div class="work-disc-range">${discLabel}</div>
+          <div class="work-title">${work.title}</div>
+          ${work.composer ? `<div class="work-orig-year">${work.composer}</div>` : ''}
+          ${work.origYear ? `<div class="work-orig-year">${work.origYear}</div>` : ''}
+          <div class="work-meta">${allTracks.length} tracks · ${fmt(runtime)}</div>
+          ${multiDisc ? `<div class="work-disc-badge">${work.discs.length} discs</div>` : ''}
+        </div>
+      </div>`;
+  });
+
+  html += `</div>`;
+
+  document.getElementById('view-boxset').innerHTML = html;
+  showView('boxset');
+  setBreadcrumb([
+    {label: 'Library', action: 'showLibrary()'},
+    {label: bs.title}
+  ]);
+}
+
+// showDisc is kept for the dual-identity panel (Revolver, index 6 in beatles.works)
+function showDisc(bsId, workIdx, mode) {
+  showWork(bsId, workIdx, mode);
+}
+
+function showWork(bsId, workIdx, mode) {
+  const bs = BOXSETS[bsId];
+  const work = bs.works[workIdx];
+  currentBoxSet = bsId;
+  currentWorkIdx = workIdx;
+  entryMode = mode;
+
+  const allTracks = work.discs.flatMap(d => d.tracks);
+  const runtime = allTracks.reduce((a, t) => a + t.ms, 0);
+  const multiDisc = work.discs.length > 1;
+
+  let crumbs;
+  if (mode === 'standalone') {
+    crumbs = [
+      {label: 'Library', action: 'showLibrary()'},
+      {label: 'Albums', action: 'showLibrary()'},
+      {label: work.title}
+    ];
+  } else {
+    crumbs = [
+      {label: 'Library', action: 'showLibrary()'},
+      {label: bs.title, action: `showBoxSet('${bsId}')`},
+      {label: work.title}
+    ];
+  }
+
+  const discLabel = multiDisc
+    ? `Discs ${work.discNums[0]}–${work.discNums[work.discNums.length - 1]}`
+    : `Disc ${work.discNums[0]}`;
+
+  const contextLine = mode === 'standalone'
+    ? `Standalone album · ${work.origYear || ''} · ${allTracks.length} tracks · ${fmt(runtime)}`
+    : `${bs.title} · ${discLabel} · ${allTracks.length} tracks · ${fmt(runtime)}`;
+
+  // Build track rows, inserting disc dividers between discs for multi-disc works
+  let tracksHtml = '';
+  let globalIdx = 0;
+  work.discs.forEach((disc, di) => {
+    if (multiDisc) {
+      tracksHtml += `<div class="disc-divider"><div class="disc-divider-label">${bs.title}: Disc ${work.discNums[di]}</div></div>`;
+    }
+    disc.tracks.forEach(tr => {
+      const capturedIdx = globalIdx;
+      tracksHtml += `
+        <div class="track-row">
+          <div class="track-num">${tr.n}</div>
+          <div class="track-info">
+            <div class="track-title">${tr.t}</div>
+            ${tr.credit ? `<div class="track-credit">${tr.credit}</div>` : ''}
+          </div>
+          <button class="track-play-btn" onclick="playFrom(${capturedIdx})">Play from here</button>
+          <div class="track-dur">${fmt(tr.ms)}</div>
+        </div>`;
+      globalIdx++;
+    });
+  });
+
+  const playLabel = multiDisc ? '▶ Play All' : '▶ Play';
+  const workArtSrc = work.art || bs.art;
+
+  document.getElementById('view-disc').innerHTML = `
+    <div class="disc-view-header">
+      ${workArtSrc ? `<div class="disc-view-art"><img src="${workArtSrc}" alt="${work.title}"></div>` : ''}
+      <div class="disc-view-info">
+        <h1>${work.title}</h1>
+        <div class="context">${contextLine}</div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="playWork()"> ${playLabel}</button>
+          <button class="btn btn-secondary" onclick="showBoxSet('${bsId}')">Back to ${mode === 'standalone' ? 'Albums' : bs.title}</button>
+        </div>
+      </div>
+    </div>
+    <div class="track-list">${tracksHtml}</div>`;
+
+  showView('disc');
+  setBreadcrumb(crumbs);
+}
+
+// ── QUEUE ─────────────────────────────────────────────────────────────────────
+
+function getWorkTracks() {
+  const bs = BOXSETS[currentBoxSet];
+  const work = bs.works[currentWorkIdx];
+  return work.discs.flatMap(d => d.tracks);
+}
+
+function getWorkContext() {
+  const bs = BOXSETS[currentBoxSet];
+  const work = bs.works[currentWorkIdx];
+  if (entryMode === 'standalone') return work.title;
+  return `${bs.title} · ${work.title}`;
+}
+
+function playWork() {
+  const tracks = getWorkTracks();
+  const context = getWorkContext();
+  const bs = BOXSETS[currentBoxSet];
+  const art = bs.works[currentWorkIdx].art || null;
+  queue = tracks.map(tr => ({ title: tr.t, artist: bs.artist, context, duration: tr.ms, art }));
+  renderQueue();
+}
+
+function playFrom(fromIdx) {
+  const tracks = getWorkTracks();
+  const context = getWorkContext();
+  const bs = BOXSETS[currentBoxSet];
+  const art = bs.works[currentWorkIdx].art || null;
+  queue = tracks.slice(fromIdx).map(tr => ({ title: tr.t, artist: bs.artist, context, duration: tr.ms, art }));
+  renderQueue();
+}
+
+function clearQueue() {
+  queue = [];
+  document.getElementById('queue').style.display = 'none';
+  renderQueue();
+}
+
+function renderQueue() {
+  const listEl = document.getElementById('queue-list');
+  const transport = document.getElementById('transport');
+
+  if (queue.length === 0) {
+    transport.classList.remove('active');
+    return;
+  }
+
+  document.getElementById('queue').style.display = 'flex';
+
+  const [playing, ...rest] = queue;
+
+  // Update transport bar
+  const tArt = document.getElementById('transport-art');
+  if (playing.art) {
+    tArt.innerHTML = `<img src="${playing.art}" alt="">`;
+    tArt.style.display = 'block';
+  } else {
+    tArt.innerHTML = '';
+    tArt.style.display = 'none';
+  }
+  document.getElementById('transport-title').textContent = playing.title;
+  document.getElementById('transport-artist').textContent = playing.artist || '';
+  document.getElementById('transport-context').textContent = playing.context;
+  transport.classList.add('active');
+
+  // Queue list: playing track pinned at top, remaining tracks below
+  const playingHtml = `
+    <div class="queue-item playing">
+      <div class="queue-item-title">${playing.title}</div>
+      <div class="queue-item-context">${playing.context}</div>
+      <div class="queue-item-dur">${fmt(playing.duration)}</div>
+    </div>`;
+
+  const restHtml = rest.map(item => `
+    <div class="queue-item">
+      <div class="queue-item-title">${item.title}</div>
+      <div class="queue-item-context">${item.context}</div>
+      <div class="queue-item-dur">${fmt(item.duration)}</div>
+    </div>`).join('');
+
+  listEl.innerHTML = playingHtml + restHtml;
+
+  if (rest.length === 0) {
+    listEl.innerHTML += `<div class="queue-empty" style="margin-top:8px">End of queue</div>`;
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+showLibrary();
+
+// Pre-load Cornell show in transport without opening the queue panel
+(function() {
+  const bs = BOXSETS['gd'];
+  const work = bs.works[2]; // May 8, 1977: Cornell
+  const context = `${work.title} — ${bs.title}`;
+  const art = work.art || null;
+  const firstTrack = work.discs[0].tracks[0];
+
+  const tArt = document.getElementById('transport-art');
+  if (art) {
+    tArt.innerHTML = `<img src="${art}" alt="">`;
+    tArt.style.display = 'block';
+  }
+  document.getElementById('transport-title').textContent = firstTrack.t;
+  document.getElementById('transport-artist').textContent = bs.artist;
+  document.getElementById('transport-context').textContent = context;
+  document.getElementById('transport').classList.add('active');
+})();
+</script>
+</body>
+</html>
